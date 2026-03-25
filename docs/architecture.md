@@ -7,7 +7,14 @@
 
 ## 1. Product Overview
 
-Peeeky is a PLG, self-serve SaaS for secure document sharing with page-level analytics. Users upload documents (pitch decks, proposals, contracts), generate tracked links, and get real-time intelligence on how recipients interact with their content.
+Peeeky is a PLG, self-serve, **multi-tenant** SaaS for secure document sharing with page-level analytics. Organizations upload documents (pitch decks, proposals, contracts), generate tracked links, and get real-time intelligence on how recipients interact with their content.
+
+### Design Principles
+
+- **Multi-tenant from day 1:** Every resource belongs to an Organization. Users are members with roles. Tenant isolation via `orgId` foreign key on all queries.
+- **Lightweight & cheap:** Serverless-first (Vercel functions), managed DB (Supabase), zero egress storage (R2). Target: <$100/mo at 0 revenue.
+- **Horizontal scaling:** Stateless API (Vercel auto-scales), async processing via job queue (Trigger.dev), cache layer (Upstash Redis) to protect the DB.
+- **Vertical scaling:** Supabase allows compute upgrades. Vector store separable to dedicated instance when needed. Analytics queries use materialized views to avoid scanning raw data.
 
 ### Core Value Proposition
 
@@ -72,17 +79,45 @@ Peeeky is a PLG, self-serve SaaS for secure document sharing with page-level ana
 │  │ Billing  │ │ Notify   │ │ AI Module (RAG + Chat) │  │
 │  │ Module   │ │ Module   │ │                        │  │
 │  └──────────┘ └──────────┘ └────────────────────────┘  │
-└────┬────────────┬────────────┬──────────────────────────┘
-     │            │            │
-┌────▼───┐  ┌────▼───┐  ┌────▼──────────────────────┐
-│Postgres│  │ R2/S3  │  │ External Services         │
-│(Prisma)│  │Storage │  │ ┌────────┐ ┌────────────┐ │
-│        │  │        │  │ │ Stripe │ │ Resend     │ │
-│        │  │        │  │ └────────┘ └────────────┘ │
-│        │  │        │  │ ┌────────┐ ┌────────────┐ │
-│        │  │        │  │ │OpenAI  │ │ Slack API  │ │
-│        │  │        │  │ └────────┘ └────────────┘ │
-└────────┘  └────────┘  └──────────────────────────┘
+└────┬────────────┬──────┬─────┬──────────────────────────┘
+     │            │      │     │
+┌────▼───┐  ┌────▼──┐ ┌─▼──┐ ┌▼─────────────────────────┐
+│Postgres│  │ R2/S3 │ │Redis│ │ External Services        │
+│(Prisma)│  │Storage│ │Cache│ │ ┌────────┐ ┌──────────┐  │
+│        │  │       │ │(Up- │ │ │ Stripe │ │ Resend   │  │
+│        │  │       │ │stash│ │ └────────┘ └──────────┘  │
+│        │  │       │ │)    │ │ ┌────────┐ ┌──────────┐  │
+│        │  │       │ └────┘ │ │OpenAI  │ │ Slack API│  │
+│        │  │       │        │ └────────┘ └──────────┘  │
+└────────┘  └───────┘  ┌─────┤ ┌─────────────────────┐  │
+                       │     │ │ Trigger.dev (Queue)  │  │
+                       │     │ └─────────────────────┘  │
+                       │     └──────────────────────────┘
+                       │
+              ┌────────▼────────┐
+              │ pgvector         │
+              │ (separable to   │
+              │  dedicated DB)  │
+              └─────────────────┘
+```
+
+### Scaling Strategy
+
+```
+Phase 1 (0-500 users): Everything on Supabase Pro ($25/mo)
+  - pgvector in same Postgres instance
+  - Redis cache on Upstash free tier
+  - Trigger.dev free tier for async jobs
+
+Phase 2 (500-5K users): Vertical scale
+  - Supabase Large compute ($50/mo)
+  - Upstash Pro ($10/mo)
+  - Materialized views for analytics aggregation
+
+Phase 3 (5K+ users): Horizontal separation
+  - Dedicated pgvector instance (Supabase secondary project)
+  - Analytics read replicas
+  - R2 multi-region if needed
 ```
 
 ---
@@ -104,9 +139,11 @@ Peeeky is a PLG, self-serve SaaS for secure document sharing with page-level ana
 | **Email** | Resend | Simple API, React Email templates |
 | **AI / LLM** | OpenAI API (GPT-4o-mini) | Cost-effective for RAG chat |
 | **Embeddings** | OpenAI text-embedding-3-small | For document chunking/search |
-| **Vector Store** | Supabase pgvector | No extra infra, lives in same Postgres |
+| **Vector Store** | Supabase pgvector | Same Postgres initially, separable to dedicated instance at scale |
+| **Cache** | Upstash Redis | Serverless Redis, analytics cache, rate limiting, session data |
+| **Job Queue** | Trigger.dev | Serverless async jobs (PDF processing, embeddings, notifications) |
 | **Notifications** | Slack Webhooks + Resend | Smart follow-up alerts |
-| **Analytics Ingest** | Next.js API route + batch insert | Simple, no extra infra for MVP |
+| **Analytics Ingest** | API route → Redis buffer → batch insert | Buffered writes protect DB; materialized views for reads |
 | **Hosting** | Vercel | Zero-config deploys, edge functions for viewer |
 | **DNS/CDN** | Cloudflare | Custom domain proxy, DDoS protection |
 | **Monitoring** | Vercel Analytics + Sentry | Errors + performance |
@@ -116,39 +153,76 @@ Peeeky is a PLG, self-serve SaaS for secure document sharing with page-level ana
 ## 5. Data Model (Prisma Schema)
 
 ```prisma
+// ─── Multi-Tenancy ──────────────────────────────────────
+// Every resource belongs to an Organization (tenant).
+// All queries MUST filter by orgId to ensure tenant isolation.
+// User can belong to multiple orgs via Membership.
+
+model Organization {
+  id               String    @id @default(cuid())
+  name             String
+  slug             String    @unique // subdomain / URL slug
+  plan             Plan      @default(FREE)
+  stripeCustomerId String?   @unique
+  stripeSubId      String?   @unique
+  logoUrl          String?
+  brandColor       String?   @default("#000000")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  members          Membership[]
+  documents        Document[]
+  domains          CustomDomain[]
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
   email         String    @unique
   emailVerified DateTime?
   image         String?
-  plan          Plan      @default(FREE)
-  stripeCustomerId   String? @unique
-  stripeSubId        String? @unique
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  documents     Document[]
-  domains       CustomDomain[]
+  memberships   Membership[]
   accounts      Account[]
   sessions      Session[]
 }
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  orgId     String
+  role      Role     @default(MEMBER)
+  createdAt DateTime @default(now())
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
+  @@index([orgId])
+}
+
+// ─── Core Models ────────────────────────────────────────
 
 model Document {
   id          String   @id @default(cuid())
   name        String
   description String?
-  fileUrl     String   // R2 URL
+  fileUrl     String   // R2 URL (private, accessed via signed URLs)
   fileType    FileType @default(PDF)
   pageCount   Int      @default(0)
   totalViews  Int      @default(0)
-  userId      String
+  orgId       String
+  createdById String   // User who uploaded
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   links       Link[]
   embeddings  DocumentEmbedding[]
+
+  @@index([orgId])
 }
 
 model Link {
@@ -202,6 +276,10 @@ model PageView {
   @@index([viewId, pageNumber])
 }
 
+// ─── AI / Embeddings ────────────────────────────────────
+// Stored in pgvector initially. Can be migrated to dedicated
+// vector DB (Pinecone, dedicated Supabase) at Phase 3.
+
 model DocumentEmbedding {
   id          String @id @default(cuid())
   documentId  String
@@ -215,17 +293,20 @@ model DocumentEmbedding {
   @@index([documentId])
 }
 
+// ─── Custom Domains ─────────────────────────────────────
+
 model CustomDomain {
   id        String   @id @default(cuid())
   domain    String   @unique
   verified  Boolean  @default(false)
-  userId    String
+  orgId     String
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 }
 
-// NextAuth models
+// ─── NextAuth Models ────────────────────────────────────
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -253,10 +334,18 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// ─── Enums ──────────────────────────────────────────────
+
 enum Plan {
   FREE
   PRO
   BUSINESS
+}
+
+enum Role {
+  OWNER    // full access, billing, delete org
+  ADMIN    // manage members, all docs
+  MEMBER   // create/edit own docs
 }
 
 enum FileType {
@@ -264,6 +353,21 @@ enum FileType {
   PPTX
 }
 ```
+
+### Tenant Isolation Pattern
+
+All data-access functions receive `orgId` from the authenticated session and include it in every query:
+
+```typescript
+// Every query is scoped to the org — no cross-tenant leaks
+async function getDocuments(orgId: string) {
+  return prisma.document.findMany({
+    where: { orgId },
+  });
+}
+```
+
+On signup, an Organization is auto-created with the user as OWNER. Users can be invited to other orgs via Membership.
 
 ---
 
@@ -297,6 +401,7 @@ src/
     analytics/                 # Charts, heatmaps, engagement score
   modules/
     auth/                      # Auth config, helpers
+    orgs/                      # Organization CRUD, membership, invites
     documents/                 # Upload, processing, CRUD logic
     links/                     # Link generation, access control
     tracking/                  # View tracking, page-level analytics
@@ -304,15 +409,22 @@ src/
     billing/                   # Stripe integration, plan enforcement
     notifications/             # Email + Slack notifications
     domains/                   # Custom domain verification + proxy
+  jobs/                        # Trigger.dev async jobs
+    process-document.ts        # PDF conversion + embedding generation
+    flush-analytics.ts         # Redis → Postgres batch write (cron)
+    send-notification.ts       # Email/Slack async delivery
+    refresh-materialized.ts    # Refresh analytics materialized views
   lib/
     prisma.ts                  # Prisma singleton
+    redis.ts                   # Upstash Redis client
     r2.ts                      # Cloudflare R2 client
     stripe.ts                  # Stripe client
     openai.ts                  # OpenAI client
     geo.ts                     # IP geolocation helper
+    tenant.ts                  # Tenant context helper (extract orgId from session)
     utils.ts                   # General utilities
   config/
-    plans.ts                   # Plan limits and features
+    plans.ts                   # Plan limits and features per org
     constants.ts               # App-wide constants
 prisma/
   schema.prisma
@@ -323,34 +435,55 @@ prisma/
 
 ## 7. Key Flows
 
-### 7.1 Document Upload Flow
+### 7.1 Document Upload Flow (Async via Trigger.dev)
 
 ```
 User uploads PDF/PPTX
   → API validates file type + size (max 50MB)
-  → Upload to Cloudflare R2
-  → If PPTX: convert to PDF (server-side via libreoffice or pdf-lib)
+  → Upload raw file to Cloudflare R2
+  → Save Document record in Postgres (status: PROCESSING)
+  → Dispatch async job to Trigger.dev queue
+  → Return immediately (document shows "Processing..." in dashboard)
+
+Trigger.dev job (runs async, no timeout pressure):
+  → If PPTX: convert to PDF (libreoffice or pdf-lib)
   → Extract text per page (pdfjs-dist)
-  → Chunk text → generate embeddings → store in pgvector
-  → Save Document record in Postgres
-  → Return document with viewer-ready URL
+  → Chunk text → generate embeddings via OpenAI API
+  → Store embeddings in pgvector
+  → Update Document status: READY
+  → Notify frontend via Supabase Realtime or polling
 ```
 
-### 7.2 Viewer + Tracking Flow
+This ensures uploads never block the API. Even if embedding generation takes 30s for a 100-page deck, the user gets instant feedback.
+
+### 7.2 Viewer + Tracking Flow (Redis-Buffered)
 
 ```
 Recipient opens link (peeeky.com/view/abc123)
-  → API checks: link active? expired? max views?
+  → API checks: link active? expired? max views? (cached in Redis, TTL 60s)
   → If password required → show password prompt
   → If email required → show email capture form
   → Load PDF in browser viewer (react-pdf)
   → On each page change:
       → POST /api/track { linkId, viewId, pageNumber, duration }
-      → Batched every 3 seconds to reduce API calls
+      → Batched every 3 seconds client-side to reduce API calls
+  → API route writes to Redis buffer (LPUSH), NOT directly to Postgres
   → On close/navigate away:
       → Send final batch via navigator.sendBeacon()
-  → Dashboard updates in near-realtime (polling every 30s or Supabase realtime)
+
+Redis → Postgres flush (runs every 10s via Trigger.dev cron):
+  → RPOP batch of events from Redis
+  → Bulk INSERT into PageView table
+  → Update View aggregate (duration, completionRate)
+  → Update Document.totalViews counter (atomic increment)
+  → If smart follow-up trigger detected → dispatch notification job
+
+Dashboard reads:
+  → Analytics aggregates from materialized views (refreshed every 60s)
+  → Real-time "currently viewing" from Redis (live viewers)
 ```
+
+This protects Postgres from write storms. 1000 concurrent viewers generate ~333 writes/sec to Redis (cheap) instead of Postgres (expensive).
 
 ### 7.3 AI Chat Flow
 
@@ -393,11 +526,11 @@ Tracking module detects: viewer spent >60s on pricing page
 | Password protection | Yes | Yes | Yes |
 | Email verification | -- | Yes | Yes |
 | Link expiration | -- | Yes | Yes |
-| Team members | 1 | 1 | 5 |
+| Team members | 1 | 3 | 10 |
 | Badge "Secured by Peeeky" | Yes (required) | Removable | Removable |
 | Data retention | 30 days | 1 year | Unlimited |
 
-Plan enforcement happens at the module level via a `checkPlanLimit(userId, feature)` utility that reads the user's plan and checks against `config/plans.ts`.
+Plan enforcement happens at the module level via a `checkPlanLimit(orgId, feature)` utility that reads the org's plan and checks against `config/plans.ts`. Limits are cached in Redis (TTL 5 min) to avoid DB hits on every request.
 
 ---
 
@@ -423,13 +556,16 @@ Target Month 5-6 with AI Chat as headline feature.
 |---|---|---|
 | Vercel | Pro | $20 |
 | Supabase (Postgres + pgvector) | Pro | $25 |
+| Upstash Redis | Free → Pay-as-you-go | $0-10 |
+| Trigger.dev | Free (50K runs/mo) → Pro | $0-25 |
 | Cloudflare R2 | Pay-as-you-go | ~$5 |
 | OpenAI API (embeddings + chat) | Pay-as-you-go | ~$20-50 |
 | Resend | Free (3K emails/mo) | $0 |
 | Stripe | 2.9% + $0.30 per txn | Variable |
 | Cloudflare (DNS/CDN) | Free | $0 |
 | Sentry | Free tier | $0 |
-| **Total** | | **~$70-100/mo** |
+| **Total (Phase 1)** | | **~$70-110/mo** |
+| **Total (Phase 2, 500+ users)** | | **~$150-250/mo** |
 
 ---
 
