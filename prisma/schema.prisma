@@ -1,8 +1,230 @@
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+generator client {
+  provider        = "prisma-client-js"
 }
 
-generator client {
-  provider = "prisma-client-js"
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+}
+
+// ─── Multi-Tenancy ──────────────────────────────────────
+
+model Organization {
+  id               String    @id @default(cuid())
+  name             String
+  slug             String    @unique
+  plan             Plan      @default(FREE)
+  stripeCustomerId String?   @unique
+  stripeSubId      String?   @unique
+  logoUrl          String?
+  brandColor       String?   @default("#000000")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  members   Membership[]
+  documents Document[]
+  domains   CustomDomain[]
+  audits    AuditEvent[]
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  memberships Membership[]
+  accounts    Account[]
+  sessions    Session[]
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  orgId     String
+  role      Role     @default(MEMBER)
+  createdAt DateTime @default(now())
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
+  @@index([orgId])
+}
+
+// ─── Core Models ────────────────────────────────────────
+
+model Document {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  fileUrl     String
+  fileType    FileType     @default(PDF)
+  status      DocStatus    @default(PROCESSING)
+  pageCount   Int          @default(0)
+  totalViews  Int          @default(0)
+  orgId       String
+  createdById String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  org        Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  links      Link[]
+  embeddings DocumentEmbedding[]
+
+  @@index([orgId])
+}
+
+model Link {
+  id              String    @id @default(cuid())
+  slug            String    @unique
+  documentId      String
+  name            String?
+  password        String?
+  requireEmail    Boolean   @default(false)
+  allowDownload   Boolean   @default(false)
+  enableWatermark Boolean   @default(false)
+  enableAIChat    Boolean   @default(false)
+  expiresAt       DateTime?
+  maxViews        Int?
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  views    View[]
+}
+
+model View {
+  id             String   @id @default(cuid())
+  linkId         String
+  viewerEmail    String?
+  viewerName     String?
+  device         String?
+  browser        String?
+  os             String?
+  country        String?
+  city           String?
+  ip             String?
+  duration       Int      @default(0)
+  completionRate Float    @default(0)
+  createdAt      DateTime @default(now())
+
+  link      Link       @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  pageViews PageView[]
+}
+
+model PageView {
+  id         String   @id @default(cuid())
+  viewId     String
+  pageNumber Int
+  duration   Int      @default(0)
+  enteredAt  DateTime @default(now())
+
+  view View @relation(fields: [viewId], references: [id], onDelete: Cascade)
+
+  @@index([viewId, pageNumber])
+}
+
+model DocumentEmbedding {
+  id         String   @id @default(cuid())
+  documentId String
+  pageNumber Int
+  chunk      String
+  createdAt  DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+}
+
+model CustomDomain {
+  id        String   @id @default(cuid())
+  domain    String   @unique
+  verified  Boolean  @default(false)
+  orgId     String
+  createdAt DateTime @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+model AuditEvent {
+  id           String   @id @default(cuid())
+  orgId        String
+  userId       String?
+  action       String
+  resourceType String
+  resourceId   String
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
+  @@index([orgId, resourceType, resourceId])
+}
+
+// ─── NextAuth Models ────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Enums ──────────────────────────────────────────────
+
+enum Plan {
+  FREE
+  PRO
+  BUSINESS
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum FileType {
+  PDF
+  PPTX
+}
+
+enum DocStatus {
+  PROCESSING
+  READY
+  ERROR
 }
