@@ -1,9 +1,12 @@
-export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-brand">
-      <h1 className="font-display text-4xl font-bold text-white">
-        p<span className="text-brand-accent">eee</span>ky
-      </h1>
-    </div>
-  );
+import { redirect } from "next/navigation";
+import { auth } from "@/modules/auth/auth";
+
+export default async function Home() {
+  const session = await auth();
+
+  if (session?.user) {
+    redirect("/documents");
+  }
+
+  redirect("/login");
 }
