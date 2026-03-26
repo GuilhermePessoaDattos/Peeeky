@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordView, recordPageView, updateViewDuration } from "@/modules/tracking";
+import { sendViewNotification } from "@/modules/notifications";
 
 // Public endpoint — no auth required (viewers are anonymous)
 export async function POST(req: NextRequest) {
@@ -29,6 +30,10 @@ export async function POST(req: NextRequest) {
 
     if (action === "view_end") {
       await updateViewDuration(viewId, duration, completionRate);
+
+      // Send notification async (don't block the response)
+      sendViewNotification(viewId).catch(console.error);
+
       return NextResponse.json({ ok: true });
     }
 
