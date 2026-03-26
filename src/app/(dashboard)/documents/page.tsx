@@ -54,6 +54,13 @@ export default function DocumentsPage() {
         return;
       }
 
+      const data = await res.json();
+
+      // Trigger text extraction in background (for AI Chat)
+      if (data.document?.id) {
+        fetch(`/api/documents/${data.document.id}/extract`, { method: "POST" }).catch(() => {});
+      }
+
       await fetchDocuments();
     } catch (error) {
       console.error("Upload error:", error);

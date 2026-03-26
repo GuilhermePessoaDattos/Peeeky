@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { chatWithDocument, ensureChunksExist } from "@/modules/ai";
+import { chatWithDocument } from "@/modules/ai";
 
-export const maxDuration = 60;
-
-// Public endpoint -- called from viewer
 export async function POST(req: NextRequest) {
   try {
     const { linkId, question, conversationHistory } = await req.json();
@@ -17,7 +14,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Question too long" }, { status: 400 });
     }
 
-    // Verify link exists and is active
     const link = await prisma.link.findUnique({
       where: { id: linkId },
       include: { document: true },
@@ -27,11 +23,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Link not found" }, { status: 404 });
     }
 
-    // Ensure text chunks exist (extract on-demand if needed)
-    const ready = await ensureChunksExist(link.documentId);
-    if (!ready) {
+    const chunkCount = await prisma.documentEmbedding.count({
+      where: { documentId: link.documentId },
+    });
+
+    if (chunkCount === 0) {
       return NextResponse.json(
-        { error: "Could not process this document for AI chat. The PDF may not contain extractable text." },
+        { error: "AI chat is being prepared. Please wait a moment and try again." },
         { status: 400 }
       );
     }
