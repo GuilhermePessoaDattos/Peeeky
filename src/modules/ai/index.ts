@@ -3,37 +3,52 @@ import { prisma } from "@/lib/prisma";
 
 export async function extractAndStoreChunks(documentId: string, pdfBuffer: Buffer) {
   try {
-    // Use dynamic import to avoid serverless issues
-    const pdfParse = (await import("pdf-parse")).default;
-    const data = await pdfParse(pdfBuffer);
+    // Use pdfjs-dist (works in serverless, no fs dependency)
+    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
-    const text = data.text;
-    const chunks = splitIntoChunks(text, 500);
+    const uint8Array = new Uint8Array(pdfBuffer);
+    const doc = await pdfjsLib.getDocument({ data: uint8Array }).promise;
+    const numPages = doc.numPages;
 
-    // Delete existing chunks for this document
+    // Extract text page by page
+    const pageTexts: string[] = [];
+    for (let i = 1; i <= numPages; i++) {
+      const page = await doc.getPage(i);
+      const textContent = await page.getTextContent();
+      const text = textContent.items
+        .map((item) => ("str" in item ? item.str : ""))
+        .join(" ");
+      if (text.trim()) {
+        pageTexts.push(text.trim());
+      }
+    }
+
+    const allText = pageTexts.join("\n\n");
+    const chunks = splitIntoChunks(allText, 500);
+
+    // Delete existing chunks
     await prisma.documentEmbedding.deleteMany({ where: { documentId } });
 
     // Insert new chunks
-    for (const chunk of chunks) {
+    for (let i = 0; i < chunks.length; i++) {
       await prisma.documentEmbedding.create({
         data: {
           documentId,
-          pageNumber: chunks.indexOf(chunk) + 1,
-          chunk,
+          pageNumber: i + 1,
+          chunk: chunks[i],
         },
       });
     }
 
-    // Update document page count
+    // Update page count
     await prisma.document.update({
       where: { id: documentId },
-      data: { pageCount: data.numpages || 1 },
+      data: { pageCount: numPages },
     });
 
-    return { chunks: chunks.length, pages: data.numpages || 1 };
+    return { chunks: chunks.length, pages: numPages };
   } catch (error) {
-    console.error("PDF parse error:", error);
-    // Fallback: store raw buffer info as single chunk
+    console.error("PDF text extraction error:", error);
     await prisma.document.update({
       where: { id: documentId },
       data: { pageCount: 1 },
