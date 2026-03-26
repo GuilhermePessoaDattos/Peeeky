@@ -57,6 +57,37 @@ export async function updateViewDuration(viewId: string, duration: number, compl
   });
 }
 
+export function computeEngagementScore(view: {
+  duration: number;
+  completionRate: number;
+  pageViews: { duration: number }[];
+}): number {
+  // Formula: (completion * 40) + (time_score * 30) + (depth * 30)
+  const completionScore = view.completionRate * 40;
+
+  // Time score: normalize duration (120s = full score for a typical deck)
+  const timeScore = Math.min(view.duration / 120, 1) * 30;
+
+  // Depth: how many pages had >5s of attention
+  const deepPages = view.pageViews.filter(pv => pv.duration > 5).length;
+  const totalPages = view.pageViews.length || 1;
+  const depthScore = (deepPages / totalPages) * 30;
+
+  return Math.round(Math.min(completionScore + timeScore + depthScore, 100));
+}
+
+export function getScoreColor(score: number): string {
+  if (score >= 70) return "#00B894";
+  if (score >= 30) return "#FDCB6E";
+  return "#E17055";
+}
+
+export function getScoreLabel(score: number): string {
+  if (score >= 70) return "High";
+  if (score >= 30) return "Medium";
+  return "Low";
+}
+
 export async function getDocumentAnalytics(orgId: string, documentId: string) {
   const views = await prisma.view.findMany({
     where: {

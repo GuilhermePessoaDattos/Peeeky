@@ -29,6 +29,49 @@ interface DocumentDetail {
   links: LinkItem[];
 }
 
+interface ViewItem {
+  id: string;
+  viewerEmail: string | null;
+  ip: string | null;
+  device: string | null;
+  browser: string | null;
+  os: string | null;
+  duration: number;
+  completionRate: number;
+  createdAt: string;
+  engagementScore: number;
+  link: { slug: string; name: string | null };
+  pageViews: { pageNumber: number; duration: number }[];
+}
+
+interface PageAnalyticsItem {
+  page: number;
+  totalDuration: number;
+  avgDuration: number;
+}
+
+interface AnalyticsData {
+  totalViews: number;
+  uniqueViewers: number;
+  avgDuration: number;
+  avgCompletion: number;
+  views: ViewItem[];
+  pageAnalytics: PageAnalyticsItem[];
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}m ${s}s`;
+}
+
+function getScoreColor(score: number): string {
+  if (score >= 70) return "#00B894";
+  if (score >= 30) return "#FDCB6E";
+  return "#E17055";
+}
+
 function LinkSettings({
   link,
   onUpdate,
@@ -234,6 +277,148 @@ function LinkSettings({
   );
 }
 
+function AnalyticsTab({ documentId }: { documentId: string }) {
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchAnalytics() {
+      try {
+        const res = await fetch(`/api/documents/${documentId}/analytics`);
+        if (res.ok) {
+          const data = await res.json();
+          setAnalytics(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch analytics:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAnalytics();
+  }, [documentId]);
+
+  if (loading) {
+    return <div className="py-12 text-center text-sm text-gray-400">Loading analytics...</div>;
+  }
+
+  if (!analytics) {
+    return <div className="py-12 text-center text-sm text-gray-400">Failed to load analytics</div>;
+  }
+
+  const maxDuration = Math.max(...analytics.pageAnalytics.map(p => p.avgDuration), 1);
+
+  return (
+    <div className="space-y-8">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="text-xs font-medium uppercase text-gray-400">Total Views</div>
+          <div className="mt-1 font-display text-2xl font-bold text-[#1A1A2E]">{analytics.totalViews}</div>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="text-xs font-medium uppercase text-gray-400">Unique Viewers</div>
+          <div className="mt-1 font-display text-2xl font-bold text-[#6C5CE7]">{analytics.uniqueViewers}</div>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="text-xs font-medium uppercase text-gray-400">Avg Duration</div>
+          <div className="mt-1 font-display text-2xl font-bold text-[#1A1A2E]">{formatDuration(analytics.avgDuration)}</div>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="text-xs font-medium uppercase text-gray-400">Avg Completion</div>
+          <div className="mt-1 font-display text-2xl font-bold text-[#00B894]">{analytics.avgCompletion}%</div>
+        </div>
+      </div>
+
+      {/* Per-Page Time Chart */}
+      {analytics.pageAnalytics.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-6">
+          <h3 className="mb-4 font-display text-sm font-semibold text-[#1A1A2E]">Time Spent Per Page</h3>
+          <div className="space-y-2">
+            {analytics.pageAnalytics.map((p) => (
+              <div key={p.page} className="flex items-center gap-3">
+                <span className="w-16 text-right text-xs text-gray-500">Page {p.page}</span>
+                <div className="flex-1 h-7 bg-gray-100 rounded overflow-hidden">
+                  <div
+                    className="h-full bg-[#6C5CE7] rounded"
+                    style={{ width: `${Math.min((p.avgDuration / maxDuration) * 100, 100)}%` }}
+                  />
+                </div>
+                <span className="w-12 text-xs text-gray-500">{formatDuration(p.avgDuration)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Viewers Table */}
+      {analytics.views.length > 0 ? (
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h3 className="font-display text-sm font-semibold text-[#1A1A2E]">Viewers</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/50">
+                  <th className="px-6 py-3 text-xs font-medium uppercase text-gray-400">Viewer</th>
+                  <th className="px-6 py-3 text-xs font-medium uppercase text-gray-400">Link</th>
+                  <th className="px-6 py-3 text-xs font-medium uppercase text-gray-400">Device</th>
+                  <th className="px-6 py-3 text-xs font-medium uppercase text-gray-400">Duration</th>
+                  <th className="px-6 py-3 text-xs font-medium uppercase text-gray-400">Completion</th>
+                  <th className="px-6 py-3 text-xs font-medium uppercase text-gray-400">Score</th>
+                  <th className="px-6 py-3 text-xs font-medium uppercase text-gray-400">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {analytics.views.map((view) => (
+                  <tr key={view.id} className="hover:bg-gray-50/50">
+                    <td className="px-6 py-3">
+                      <div className="text-sm text-[#1A1A2E]">
+                        {view.viewerEmail || view.ip || "Anonymous"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-3">
+                      <code className="text-xs text-gray-500">{view.link.slug}</code>
+                    </td>
+                    <td className="px-6 py-3 text-xs text-gray-500">
+                      {[view.device, view.browser].filter(Boolean).join(" / ") || "-"}
+                    </td>
+                    <td className="px-6 py-3 text-xs text-gray-600 font-medium">
+                      {formatDuration(view.duration)}
+                    </td>
+                    <td className="px-6 py-3 text-xs text-gray-600">
+                      {Math.round(view.completionRate * 100)}%
+                    </td>
+                    <td className="px-6 py-3">
+                      <span
+                        className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
+                        style={{
+                          backgroundColor: `${getScoreColor(view.engagementScore)}15`,
+                          color: getScoreColor(view.engagementScore),
+                        }}
+                      >
+                        {view.engagementScore}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 text-xs text-gray-400">
+                      {new Date(view.createdAt).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center">
+          <p className="text-sm text-gray-500">No views yet. Share a link to start tracking engagement.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DocumentDetailPage({
   params,
 }: {
@@ -245,6 +430,7 @@ export default function DocumentDetailPage({
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [expandedLink, setExpandedLink] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"links" | "analytics">("links");
 
   const fetchDocument = useCallback(async () => {
     try {
@@ -368,110 +554,143 @@ export default function DocumentDetailPage({
         </div>
       </div>
 
-      {/* Links */}
-      <div>
-        <h2 className="mb-4 font-display text-lg font-semibold text-[#1A1A2E]">Links</h2>
-        {doc.links.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center">
-            <p className="mb-4 text-sm text-gray-500">No links yet. Create one to start sharing.</p>
-            <button
-              onClick={createLink}
-              className="rounded-lg bg-[#6C5CE7] px-4 py-2 text-sm font-semibold text-white"
-            >
-              + Create Link
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {doc.links.map((link) => (
-              <div
-                key={link.id}
-                className="overflow-hidden rounded-xl border border-gray-200 bg-white"
-              >
-                <div className="flex items-center justify-between p-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <code className="text-sm font-medium text-[#1A1A2E]">
-                        /view/{link.slug}
-                      </code>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                        link.isActive ? "bg-[#00B894]/10 text-[#00B894]" : "bg-gray-100 text-gray-500"
-                      }`}>
-                        {link.isActive ? "Active" : "Inactive"}
-                      </span>
-                      {link.password && (
-                        <span className="rounded-full bg-yellow-50 px-2 py-0.5 text-[10px] font-semibold text-yellow-600">
-                          Password
-                        </span>
-                      )}
-                      {link.requireEmail && (
-                        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600">
-                          Email
-                        </span>
-                      )}
-                      {link.expiresAt && (
-                        <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-600">
-                          Expires
-                        </span>
-                      )}
-                      {link.maxViews && (
-                        <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-600">
-                          Max {link.maxViews} views
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 text-xs text-gray-400">
-                      {link._count.views} views &bull; Created {new Date(link.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => toggleLinkActive(link.id)}
-                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                        link.isActive
-                          ? "border-gray-200 text-gray-600 hover:bg-gray-50"
-                          : "border-[#00B894]/30 text-[#00B894] hover:bg-[#00B894]/5"
-                      }`}
-                    >
-                      {link.isActive ? "Disable" : "Enable"}
-                    </button>
-                    <button
-                      onClick={() => copyLink(link.slug)}
-                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
-                    >
-                      {copied === link.slug ? "Copied!" : "Copy Link"}
-                    </button>
-                    <a
-                      href={`/view/${link.slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
-                    >
-                      Preview
-                    </a>
-                    <button
-                      onClick={() =>
-                        setExpandedLink(expandedLink === link.id ? null : link.id)
-                      }
-                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                        expandedLink === link.id
-                          ? "border-[#6C5CE7] bg-[#6C5CE7]/5 text-[#6C5CE7]"
-                          : "border-gray-200 text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      Settings
-                    </button>
-                  </div>
-                </div>
-
-                {expandedLink === link.id && (
-                  <LinkSettings link={link} onUpdate={fetchDocument} />
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+      {/* Tabs */}
+      <div className="mb-6 flex items-center gap-0 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab("links")}
+          className={`relative px-4 py-3 text-sm font-medium transition ${
+            activeTab === "links"
+              ? "text-[#6C5CE7]"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Links
+          {activeTab === "links" && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6C5CE7] rounded-full" />
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab("analytics")}
+          className={`relative px-4 py-3 text-sm font-medium transition ${
+            activeTab === "analytics"
+              ? "text-[#6C5CE7]"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Analytics
+          {activeTab === "analytics" && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6C5CE7] rounded-full" />
+          )}
+        </button>
       </div>
+
+      {/* Tab Content */}
+      {activeTab === "links" && (
+        <div>
+          {doc.links.length === 0 ? (
+            <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center">
+              <p className="mb-4 text-sm text-gray-500">No links yet. Create one to start sharing.</p>
+              <button
+                onClick={createLink}
+                className="rounded-lg bg-[#6C5CE7] px-4 py-2 text-sm font-semibold text-white"
+              >
+                + Create Link
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {doc.links.map((link) => (
+                <div
+                  key={link.id}
+                  className="overflow-hidden rounded-xl border border-gray-200 bg-white"
+                >
+                  <div className="flex items-center justify-between p-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <code className="text-sm font-medium text-[#1A1A2E]">
+                          /view/{link.slug}
+                        </code>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          link.isActive ? "bg-[#00B894]/10 text-[#00B894]" : "bg-gray-100 text-gray-500"
+                        }`}>
+                          {link.isActive ? "Active" : "Inactive"}
+                        </span>
+                        {link.password && (
+                          <span className="rounded-full bg-yellow-50 px-2 py-0.5 text-[10px] font-semibold text-yellow-600">
+                            Password
+                          </span>
+                        )}
+                        {link.requireEmail && (
+                          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600">
+                            Email
+                          </span>
+                        )}
+                        {link.expiresAt && (
+                          <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-600">
+                            Expires
+                          </span>
+                        )}
+                        {link.maxViews && (
+                          <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-600">
+                            Max {link.maxViews} views
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 text-xs text-gray-400">
+                        {link._count.views} views &bull; Created {new Date(link.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleLinkActive(link.id)}
+                        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                          link.isActive
+                            ? "border-gray-200 text-gray-600 hover:bg-gray-50"
+                            : "border-[#00B894]/30 text-[#00B894] hover:bg-[#00B894]/5"
+                        }`}
+                      >
+                        {link.isActive ? "Disable" : "Enable"}
+                      </button>
+                      <button
+                        onClick={() => copyLink(link.slug)}
+                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
+                      >
+                        {copied === link.slug ? "Copied!" : "Copy Link"}
+                      </button>
+                      <a
+                        href={`/view/${link.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
+                      >
+                        Preview
+                      </a>
+                      <button
+                        onClick={() =>
+                          setExpandedLink(expandedLink === link.id ? null : link.id)
+                        }
+                        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                          expandedLink === link.id
+                            ? "border-[#6C5CE7] bg-[#6C5CE7]/5 text-[#6C5CE7]"
+                            : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        Settings
+                      </button>
+                    </div>
+                  </div>
+
+                  {expandedLink === link.id && (
+                    <LinkSettings link={link} onUpdate={fetchDocument} />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "analytics" && <AnalyticsTab documentId={id} />}
     </div>
   );
 }
