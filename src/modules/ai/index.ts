@@ -6,65 +6,72 @@ export async function ensureChunksExist(documentId: string): Promise<boolean> {
   const count = await prisma.documentEmbedding.count({ where: { documentId } });
   if (count > 0) return true;
 
-  // Try to extract now
   const doc = await prisma.document.findUnique({ where: { id: documentId } });
   if (!doc) return false;
 
   try {
+    // Download PDF from R2
     const signedUrl = await getSignedViewUrl(doc.fileUrl);
     const response = await fetch(signedUrl);
     const buffer = Buffer.from(await response.arrayBuffer());
-    await extractAndStoreChunks(documentId, buffer);
+
+    // Use OpenAI to extract/summarize content
+    const base64 = buffer.toString("base64");
+
+    const extraction = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "Extract ALL text content from this PDF document. Return the raw text, organized by sections. Include every detail — numbers, names, dates, terms, clauses. Do not summarize, extract everything verbatim.",
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "file",
+              file: {
+                filename: "document.pdf",
+                file_data: `data:application/pdf;base64,${base64}`,
+              },
+            },
+            {
+              type: "text",
+              text: "Extract all text from this PDF document.",
+            },
+          ],
+        },
+      ],
+      max_tokens: 16000,
+    });
+
+    const extractedText = extraction.choices[0]?.message?.content;
+    if (!extractedText || extractedText.length < 20) return false;
+
+    const chunks = splitIntoChunks(extractedText, 500);
+
+    await prisma.documentEmbedding.deleteMany({ where: { documentId } });
+
+    for (let i = 0; i < chunks.length; i++) {
+      await prisma.documentEmbedding.create({
+        data: {
+          documentId,
+          pageNumber: i + 1,
+          chunk: chunks[i],
+        },
+      });
+    }
+
+    await prisma.document.update({
+      where: { id: documentId },
+      data: { pageCount: Math.max(Math.ceil(chunks.length / 2), 1) },
+    });
+
     return true;
   } catch (error) {
-    console.error("On-demand extraction failed:", error);
+    console.error("Text extraction failed:", error);
     return false;
   }
-}
-
-export async function extractAndStoreChunks(documentId: string, pdfBuffer: Buffer) {
-  // Use pdfjs-dist to extract text
-  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-
-  const uint8Array = new Uint8Array(pdfBuffer);
-  const doc = await pdfjsLib.getDocument({ data: uint8Array }).promise;
-  const numPages = doc.numPages;
-
-  const pageTexts: string[] = [];
-  for (let i = 1; i <= numPages; i++) {
-    const page = await doc.getPage(i);
-    const textContent = await page.getTextContent();
-    const text = textContent.items
-      .map((item) => ("str" in item ? item.str : ""))
-      .join(" ");
-    if (text.trim()) {
-      pageTexts.push(text.trim());
-    }
-  }
-
-  const allText = pageTexts.join("\n\n");
-  const chunks = splitIntoChunks(allText, 500);
-
-  if (chunks.length === 0) return { chunks: 0, pages: numPages };
-
-  await prisma.documentEmbedding.deleteMany({ where: { documentId } });
-
-  for (let i = 0; i < chunks.length; i++) {
-    await prisma.documentEmbedding.create({
-      data: {
-        documentId,
-        pageNumber: i + 1,
-        chunk: chunks[i],
-      },
-    });
-  }
-
-  await prisma.document.update({
-    where: { id: documentId },
-    data: { pageCount: numPages },
-  });
-
-  return { chunks: chunks.length, pages: numPages };
 }
 
 function splitIntoChunks(text: string, maxLength: number): string[] {
