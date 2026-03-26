@@ -10,13 +10,22 @@ export async function recordView(linkId: string, metadata: {
   city?: string;
   ip?: string;
 }) {
-  return prisma.view.create({
+  const view = await prisma.view.create({
     data: {
       id: nanoid(12),
       linkId,
       ...metadata,
     },
+    include: { link: true },
   });
+
+  // Increment document totalViews
+  await prisma.document.update({
+    where: { id: view.link.documentId },
+    data: { totalViews: { increment: 1 } },
+  });
+
+  return view;
 }
 
 export async function recordPageView(viewId: string, pageNumber: number, duration: number) {
