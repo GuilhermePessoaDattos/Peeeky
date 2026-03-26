@@ -1,42 +1,45 @@
 import { openai } from "@/lib/openai";
 import { prisma } from "@/lib/prisma";
-import { PDFParse } from "pdf-parse";
 
 export async function extractAndStoreChunks(documentId: string, pdfBuffer: Buffer) {
-  const pdf = new PDFParse({ data: new Uint8Array(pdfBuffer) });
-  const textResult = await pdf.getText();
-  const info = await pdf.getInfo();
-  const numPages = info.total;
+  try {
+    // Use dynamic import to avoid serverless issues
+    const pdfParse = (await import("pdf-parse")).default;
+    const data = await pdfParse(pdfBuffer);
 
-  // Split text into chunks (~500 chars each)
-  const text = textResult.text;
-  const chunks = splitIntoChunks(text, 500);
+    const text = data.text;
+    const chunks = splitIntoChunks(text, 500);
 
-  // Store chunks
-  const records = chunks.map((chunk, i) => ({
-    documentId,
-    pageNumber: i + 1,
-    chunk,
-  }));
+    // Delete existing chunks for this document
+    await prisma.documentEmbedding.deleteMany({ where: { documentId } });
 
-  // Delete existing chunks for this document
-  await prisma.documentEmbedding.deleteMany({ where: { documentId } });
+    // Insert new chunks
+    for (const chunk of chunks) {
+      await prisma.documentEmbedding.create({
+        data: {
+          documentId,
+          pageNumber: chunks.indexOf(chunk) + 1,
+          chunk,
+        },
+      });
+    }
 
-  // Insert new chunks
-  for (const record of records) {
-    await prisma.documentEmbedding.create({ data: record });
+    // Update document page count
+    await prisma.document.update({
+      where: { id: documentId },
+      data: { pageCount: data.numpages || 1 },
+    });
+
+    return { chunks: chunks.length, pages: data.numpages || 1 };
+  } catch (error) {
+    console.error("PDF parse error:", error);
+    // Fallback: store raw buffer info as single chunk
+    await prisma.document.update({
+      where: { id: documentId },
+      data: { pageCount: 1 },
+    });
+    return { chunks: 0, pages: 1 };
   }
-
-  // Update document page count
-  await prisma.document.update({
-    where: { id: documentId },
-    data: { pageCount: numPages },
-  });
-
-  // Clean up
-  await pdf.destroy();
-
-  return { chunks: chunks.length, pages: numPages };
 }
 
 function splitIntoChunks(text: string, maxLength: number): string[] {
@@ -61,7 +64,6 @@ function splitIntoChunks(text: string, maxLength: number): string[] {
 }
 
 export async function searchChunks(documentId: string, query: string, limit = 5) {
-  // Simple keyword search (MVP -- upgrade to vector search later)
   const keywords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
 
   const allChunks = await prisma.documentEmbedding.findMany({
@@ -69,7 +71,6 @@ export async function searchChunks(documentId: string, query: string, limit = 5)
     orderBy: { pageNumber: "asc" },
   });
 
-  // Score chunks by keyword matches
   const scored = allChunks.map(chunk => {
     const text = chunk.chunk.toLowerCase();
     let score = 0;

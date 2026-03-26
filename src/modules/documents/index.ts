@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { uploadFile, deleteFile } from "@/lib/r2";
 import { nanoid } from "nanoid";
-import { extractAndStoreChunks } from "@/modules/ai";
 
 export async function createDocument(
   orgId: string,
@@ -14,44 +13,37 @@ export async function createDocument(
   const key = `${orgId}/${id}/${file.name}`;
   const fileType = ext === "pptx" ? "PPTX" : "PDF";
 
+  // Upload to R2
   await uploadFile(key, buffer, file.type);
 
+  // Create document record (READY immediately — text extraction is separate)
   const document = await prisma.document.create({
     data: {
       id,
       name: file.name.replace(/\.(pdf|pptx)$/i, ""),
       fileUrl: key,
       fileType,
-      status: "PROCESSING",
+      status: "READY",
       orgId,
       createdById: userId,
     },
   });
 
-  // Extract text chunks for AI chat (inline for MVP -- move to background job later)
+  // Try text extraction in background (non-blocking)
   if (fileType === "PDF") {
-    try {
-      await extractAndStoreChunks(document.id, buffer);
-      await prisma.document.update({
-        where: { id: document.id },
-        data: { status: "READY" },
-      });
-    } catch (error) {
-      console.error("Text extraction failed:", error);
-      // Document is still usable, just without AI chat
-      await prisma.document.update({
-        where: { id: document.id },
-        data: { status: "READY" },
-      });
-    }
-  } else {
-    await prisma.document.update({
-      where: { id: document.id },
-      data: { status: "READY" },
-    });
+    extractTextInBackground(document.id, buffer).catch(console.error);
   }
 
   return document;
+}
+
+async function extractTextInBackground(documentId: string, buffer: Buffer) {
+  try {
+    const { extractAndStoreChunks } = await import("@/modules/ai");
+    await extractAndStoreChunks(documentId, buffer);
+  } catch (error) {
+    console.error("Background text extraction failed:", error);
+  }
 }
 
 export async function getDocuments(orgId: string) {
