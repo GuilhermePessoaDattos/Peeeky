@@ -8,7 +8,7 @@ const { auth } = NextAuth(authConfig);
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
-  const publicPaths = ["/login", "/api/auth", "/api/health", "/api/debug-auth", "/api/track", "/api/links", "/api/webhooks", "/view"];
+  const publicPaths = ["/login", "/api/auth", "/api/health", "/api/debug-auth", "/api/track", "/api/links", "/api/webhooks", "/api/ai", "/view"];
   if (publicPaths.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }

@@ -70,6 +70,7 @@ export default async function ViewerPage({
       linkId={link.id}
       totalPages={link.document.pageCount}
       allowDownload={link.allowDownload}
+      enableAIChat={link.enableAIChat}
     />
   );
 }

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { uploadFile, deleteFile } from "@/lib/r2";
 import { nanoid } from "nanoid";
+import { extractAndStoreChunks } from "@/modules/ai";
 
 export async function createDocument(
   orgId: string,
@@ -21,11 +22,34 @@ export async function createDocument(
       name: file.name.replace(/\.(pdf|pptx)$/i, ""),
       fileUrl: key,
       fileType,
-      status: "READY",
+      status: "PROCESSING",
       orgId,
       createdById: userId,
     },
   });
+
+  // Extract text chunks for AI chat (inline for MVP -- move to background job later)
+  if (fileType === "PDF") {
+    try {
+      await extractAndStoreChunks(document.id, buffer);
+      await prisma.document.update({
+        where: { id: document.id },
+        data: { status: "READY" },
+      });
+    } catch (error) {
+      console.error("Text extraction failed:", error);
+      // Document is still usable, just without AI chat
+      await prisma.document.update({
+        where: { id: document.id },
+        data: { status: "READY" },
+      });
+    }
+  } else {
+    await prisma.document.update({
+      where: { id: document.id },
+      data: { status: "READY" },
+    });
+  }
 
   return document;
 }
