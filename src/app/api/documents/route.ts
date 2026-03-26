@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/modules/auth/auth";
 import { createDocument, getDocuments } from "@/modules/documents";
 
+// Allow up to 60s for upload + text extraction
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();

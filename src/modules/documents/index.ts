@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { uploadFile, deleteFile } from "@/lib/r2";
+import { extractAndStoreChunks } from "@/modules/ai";
 import { nanoid } from "nanoid";
 
 export async function createDocument(
@@ -16,34 +17,35 @@ export async function createDocument(
   // Upload to R2
   await uploadFile(key, buffer, file.type);
 
-  // Create document record (READY immediately — text extraction is separate)
+  // Create document record
   const document = await prisma.document.create({
     data: {
       id,
       name: file.name.replace(/\.(pdf|pptx)$/i, ""),
       fileUrl: key,
       fileType,
-      status: "READY",
+      status: "PROCESSING",
       orgId,
       createdById: userId,
     },
   });
 
-  // Try text extraction in background (non-blocking)
+  // Extract text synchronously (must complete before response in serverless)
   if (fileType === "PDF") {
-    extractTextInBackground(document.id, buffer).catch(console.error);
+    try {
+      await extractAndStoreChunks(document.id, buffer);
+    } catch (error) {
+      console.error("Text extraction failed:", error);
+    }
   }
+
+  // Mark as ready
+  await prisma.document.update({
+    where: { id: document.id },
+    data: { status: "READY" },
+  });
 
   return document;
-}
-
-async function extractTextInBackground(documentId: string, buffer: Buffer) {
-  try {
-    const { extractAndStoreChunks } = await import("@/modules/ai");
-    await extractAndStoreChunks(documentId, buffer);
-  } catch (error) {
-    console.error("Background text extraction failed:", error);
-  }
 }
 
 export async function getDocuments(orgId: string) {
