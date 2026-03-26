@@ -26,6 +26,7 @@ export async function PATCH(
       requireEmail: body.requireEmail,
       allowDownload: body.allowDownload,
       enableWatermark: body.enableWatermark,
+      enableAIChat: body.enableAIChat,
       expiresAt: body.expiresAt ? new Date(body.expiresAt) : body.expiresAt === null ? null : undefined,
       maxViews: body.maxViews,
     });

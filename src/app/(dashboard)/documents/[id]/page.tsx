@@ -12,6 +12,7 @@ interface LinkItem {
   requireEmail: boolean;
   allowDownload: boolean;
   enableWatermark: boolean;
+  enableAIChat: boolean;
   expiresAt: string | null;
   maxViews: number | null;
   createdAt: string;
@@ -83,6 +84,7 @@ function LinkSettings({
   const [requireEmail, setRequireEmail] = useState(link.requireEmail);
   const [allowDownload, setAllowDownload] = useState(link.allowDownload);
   const [enableWatermark, setEnableWatermark] = useState(link.enableWatermark);
+  const [enableAIChat, setEnableAIChat] = useState(link.enableAIChat);
   const [expiresAt, setExpiresAt] = useState(
     link.expiresAt ? link.expiresAt.slice(0, 16) : ""
   );
@@ -198,6 +200,19 @@ function LinkSettings({
             className="rounded border-gray-300 text-[#6C5CE7] focus:ring-[#6C5CE7]"
           />
           Watermark
+        </label>
+
+        <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={enableAIChat}
+            onChange={(e) => {
+              setEnableAIChat(e.target.checked);
+              save("enableAIChat", e.target.checked);
+            }}
+            className="rounded border-gray-300 text-[#6C5CE7] focus:ring-[#6C5CE7]"
+          />
+          AI Chat
         </label>
       </div>
 

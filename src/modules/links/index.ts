@@ -72,6 +72,7 @@ export async function updateLink(
     requireEmail?: boolean;
     allowDownload?: boolean;
     enableWatermark?: boolean;
+    enableAIChat?: boolean;
     expiresAt?: Date | null;
     maxViews?: number | null;
   }
@@ -100,6 +101,7 @@ export async function updateLink(
       requireEmail: data.requireEmail,
       allowDownload: data.allowDownload,
       enableWatermark: data.enableWatermark,
+      enableAIChat: data.enableAIChat,
       expiresAt: data.expiresAt,
       maxViews: data.maxViews,
     },
