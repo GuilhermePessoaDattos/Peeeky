@@ -62,3 +62,53 @@ export async function getLinkBySlug(slug: string) {
     },
   });
 }
+
+export async function updateLink(
+  orgId: string,
+  linkId: string,
+  data: {
+    name?: string;
+    password?: string | null;
+    requireEmail?: boolean;
+    allowDownload?: boolean;
+    enableWatermark?: boolean;
+    expiresAt?: Date | null;
+    maxViews?: number | null;
+  }
+) {
+  const link = await prisma.link.findFirst({
+    where: { id: linkId, document: { orgId } },
+  });
+  if (!link) throw new Error("Link not found");
+
+  // Hash password if provided
+  let hashedPassword = undefined;
+  if (data.password !== undefined) {
+    if (data.password === null || data.password === "") {
+      hashedPassword = null;
+    } else {
+      const bcrypt = await import("bcryptjs");
+      hashedPassword = await bcrypt.hash(data.password, 12);
+    }
+  }
+
+  return prisma.link.update({
+    where: { id: linkId },
+    data: {
+      name: data.name,
+      password: hashedPassword !== undefined ? hashedPassword : undefined,
+      requireEmail: data.requireEmail,
+      allowDownload: data.allowDownload,
+      enableWatermark: data.enableWatermark,
+      expiresAt: data.expiresAt,
+      maxViews: data.maxViews,
+    },
+  });
+}
+
+export async function verifyLinkPassword(linkId: string, password: string): Promise<boolean> {
+  const link = await prisma.link.findUnique({ where: { id: linkId } });
+  if (!link?.password) return true;
+  const bcrypt = await import("bcryptjs");
+  return bcrypt.compare(password, link.password);
+}

@@ -13,9 +13,11 @@ interface ViewerClientProps {
   documentName: string;
   linkId: string;
   totalPages: number;
+  allowDownload?: boolean;
+  viewerEmail?: string;
 }
 
-export function ViewerClient({ signedUrl, documentName, linkId, totalPages }: ViewerClientProps) {
+export function ViewerClient({ signedUrl, documentName, linkId, totalPages, allowDownload, viewerEmail }: ViewerClientProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [viewId, setViewId] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export function ViewerClient({ signedUrl, documentName, linkId, totalPages }: Vi
     fetch("/api/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "view_start", linkId }),
+      body: JSON.stringify({ action: "view_start", linkId, viewerEmail }),
     })
       .then((r) => r.json())
       .then((data) => setViewId(data.viewId))
@@ -120,6 +122,11 @@ export function ViewerClient({ signedUrl, documentName, linkId, totalPages }: Vi
           >
             +
           </button>
+          {allowDownload && (
+            <a href={signedUrl} download className="rounded px-2 py-1 text-xs text-white/60 hover:bg-white/10">
+              &#11015; Download
+            </a>
+          )}
         </div>
       </header>
 
