@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { chatWithDocument } from "@/modules/ai";
+import { chatWithDocument, ensureChunksExist } from "@/modules/ai";
+
+export const maxDuration = 60;
 
 // Public endpoint -- called from viewer
 export async function POST(req: NextRequest) {
@@ -25,14 +27,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Link not found" }, { status: 404 });
     }
 
-    // Check if document has chunks (AI-ready)
-    const chunkCount = await prisma.documentEmbedding.count({
-      where: { documentId: link.documentId },
-    });
-
-    if (chunkCount === 0) {
+    // Ensure text chunks exist (extract on-demand if needed)
+    const ready = await ensureChunksExist(link.documentId);
+    if (!ready) {
       return NextResponse.json(
-        { error: "AI chat is not available for this document" },
+        { error: "Could not process this document for AI chat. The PDF may not contain extractable text." },
         { status: 400 }
       );
     }

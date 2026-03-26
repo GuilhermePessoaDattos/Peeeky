@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { uploadFile, deleteFile } from "@/lib/r2";
-import { extractAndStoreChunks } from "@/modules/ai";
 import { nanoid } from "nanoid";
 
 export async function createDocument(
@@ -18,31 +17,17 @@ export async function createDocument(
   await uploadFile(key, buffer, file.type);
 
   // Create document record
+  // Text extraction happens on-demand when AI Chat is first used
   const document = await prisma.document.create({
     data: {
       id,
       name: file.name.replace(/\.(pdf|pptx)$/i, ""),
       fileUrl: key,
       fileType,
-      status: "PROCESSING",
+      status: "READY",
       orgId,
       createdById: userId,
     },
-  });
-
-  // Extract text synchronously (must complete before response in serverless)
-  if (fileType === "PDF") {
-    try {
-      await extractAndStoreChunks(document.id, buffer);
-    } catch (error) {
-      console.error("Text extraction failed:", error);
-    }
-  }
-
-  // Mark as ready
-  await prisma.document.update({
-    where: { id: document.id },
-    data: { status: "READY" },
   });
 
   return document;

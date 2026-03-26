@@ -1,60 +1,70 @@
 import { openai } from "@/lib/openai";
 import { prisma } from "@/lib/prisma";
+import { getSignedViewUrl } from "@/lib/r2";
+
+export async function ensureChunksExist(documentId: string): Promise<boolean> {
+  const count = await prisma.documentEmbedding.count({ where: { documentId } });
+  if (count > 0) return true;
+
+  // Try to extract now
+  const doc = await prisma.document.findUnique({ where: { id: documentId } });
+  if (!doc) return false;
+
+  try {
+    const signedUrl = await getSignedViewUrl(doc.fileUrl);
+    const response = await fetch(signedUrl);
+    const buffer = Buffer.from(await response.arrayBuffer());
+    await extractAndStoreChunks(documentId, buffer);
+    return true;
+  } catch (error) {
+    console.error("On-demand extraction failed:", error);
+    return false;
+  }
+}
 
 export async function extractAndStoreChunks(documentId: string, pdfBuffer: Buffer) {
-  try {
-    // Use pdfjs-dist (works in serverless, no fs dependency)
-    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  // Use pdfjs-dist to extract text
+  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
-    const uint8Array = new Uint8Array(pdfBuffer);
-    const doc = await pdfjsLib.getDocument({ data: uint8Array }).promise;
-    const numPages = doc.numPages;
+  const uint8Array = new Uint8Array(pdfBuffer);
+  const doc = await pdfjsLib.getDocument({ data: uint8Array }).promise;
+  const numPages = doc.numPages;
 
-    // Extract text page by page
-    const pageTexts: string[] = [];
-    for (let i = 1; i <= numPages; i++) {
-      const page = await doc.getPage(i);
-      const textContent = await page.getTextContent();
-      const text = textContent.items
-        .map((item) => ("str" in item ? item.str : ""))
-        .join(" ");
-      if (text.trim()) {
-        pageTexts.push(text.trim());
-      }
+  const pageTexts: string[] = [];
+  for (let i = 1; i <= numPages; i++) {
+    const page = await doc.getPage(i);
+    const textContent = await page.getTextContent();
+    const text = textContent.items
+      .map((item) => ("str" in item ? item.str : ""))
+      .join(" ");
+    if (text.trim()) {
+      pageTexts.push(text.trim());
     }
-
-    const allText = pageTexts.join("\n\n");
-    const chunks = splitIntoChunks(allText, 500);
-
-    // Delete existing chunks
-    await prisma.documentEmbedding.deleteMany({ where: { documentId } });
-
-    // Insert new chunks
-    for (let i = 0; i < chunks.length; i++) {
-      await prisma.documentEmbedding.create({
-        data: {
-          documentId,
-          pageNumber: i + 1,
-          chunk: chunks[i],
-        },
-      });
-    }
-
-    // Update page count
-    await prisma.document.update({
-      where: { id: documentId },
-      data: { pageCount: numPages },
-    });
-
-    return { chunks: chunks.length, pages: numPages };
-  } catch (error) {
-    console.error("PDF text extraction error:", error);
-    await prisma.document.update({
-      where: { id: documentId },
-      data: { pageCount: 1 },
-    });
-    return { chunks: 0, pages: 1 };
   }
+
+  const allText = pageTexts.join("\n\n");
+  const chunks = splitIntoChunks(allText, 500);
+
+  if (chunks.length === 0) return { chunks: 0, pages: numPages };
+
+  await prisma.documentEmbedding.deleteMany({ where: { documentId } });
+
+  for (let i = 0; i < chunks.length; i++) {
+    await prisma.documentEmbedding.create({
+      data: {
+        documentId,
+        pageNumber: i + 1,
+        chunk: chunks[i],
+      },
+    });
+  }
+
+  await prisma.document.update({
+    where: { id: documentId },
+    data: { pageCount: numPages },
+  });
+
+  return { chunks: chunks.length, pages: numPages };
 }
 
 function splitIntoChunks(text: string, maxLength: number): string[] {
