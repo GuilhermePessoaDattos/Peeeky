@@ -1,5 +1,9 @@
-import { auth } from "@/modules/auth/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "@/modules/auth/auth.config";
 import { NextResponse } from "next/server";
+
+// Uses edge-safe config (no Prisma) for middleware
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
