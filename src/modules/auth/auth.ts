@@ -26,45 +26,42 @@ export const {
       from: "Peeeky <onboarding@resend.dev>",
     }),
   ],
-  callbacks: {
-    ...authConfig.callbacks,
+  events: {
+    // Auto-create org when a new user is created by the adapter
+    async createUser({ user }) {
+      if (!user.id || !user.email) return;
 
-    async signIn({ user }) {
-      if (!user.email) return false;
+      const slug = nanoid(8);
+      const orgName = user.name
+        ? `${user.name}'s Workspace`
+        : "My Workspace";
 
-      const existing = await prisma.membership.findFirst({
-        where: { user: { email: user.email } },
-      });
-
-      if (!existing && user.id) {
-        const slug = nanoid(8);
-        const orgName = user.name
-          ? `${user.name}'s Workspace`
-          : "My Workspace";
-
-        await prisma.organization.create({
-          data: {
-            name: orgName,
-            slug,
-            members: {
-              create: {
-                userId: user.id,
-                role: "OWNER",
-              },
+      await prisma.organization.create({
+        data: {
+          name: orgName,
+          slug,
+          members: {
+            create: {
+              userId: user.id,
+              role: "OWNER",
             },
           },
-        });
-      }
-
-      return true;
+        },
+      });
     },
+  },
+  callbacks: {
+    ...authConfig.callbacks,
 
     async jwt({ token, user }) {
       if (user?.id) {
         token.userId = user.id;
+      }
 
+      // Fetch org info on every JWT creation/refresh when we have userId
+      if (token.userId && !token.orgId) {
         const membership = await prisma.membership.findFirst({
-          where: { userId: user.id },
+          where: { userId: token.userId as string },
           include: { org: true },
           orderBy: { createdAt: "asc" },
         });
@@ -76,16 +73,17 @@ export const {
           token.plan = membership.org.plan;
         }
       }
+
       return token;
     },
 
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.userId as string;
-        session.user.orgId = token.orgId as string;
-        session.user.orgSlug = token.orgSlug as string;
-        session.user.role = token.role as string;
-        session.user.plan = token.plan as string;
+        session.user.orgId = (token.orgId as string) || "";
+        session.user.orgSlug = (token.orgSlug as string) || "";
+        session.user.role = (token.role as string) || "";
+        session.user.plan = (token.plan as string) || "FREE";
       }
       return session;
     },
