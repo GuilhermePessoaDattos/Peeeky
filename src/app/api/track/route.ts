@@ -18,6 +18,8 @@ export async function POST(req: NextRequest) {
     if (action === "view_start") {
       const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "";
       const ua = req.headers.get("user-agent") || "";
+      const country = req.headers.get("x-vercel-ip-country") || null;
+      const city = req.headers.get("x-vercel-ip-city") || null;
 
       const view = await recordView(linkId, {
         viewerEmail,
@@ -25,6 +27,8 @@ export async function POST(req: NextRequest) {
         device: /Mobile/i.test(ua) ? "Mobile" : "Desktop",
         browser: extractBrowser(ua),
         os: extractOS(ua),
+        country,
+        city,
       });
 
       return NextResponse.json({ viewId: view.id });
