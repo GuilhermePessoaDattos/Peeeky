@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
+import { redis } from "@/lib/redis";
 import { computeEngagementScore } from "@/modules/tracking";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -109,5 +110,24 @@ export async function sendViewNotification(viewId: string) {
     });
   } catch (error) {
     console.error("Failed to send notification email:", error);
+  }
+
+  // Send Slack notification if configured
+  const slackUrl = await redis.get<string>(`slack_webhook:${view.link.document.orgId}`);
+  if (slackUrl) {
+    const slackMsg = `📄 *${viewerName}* viewed "${docName}" (${durationStr}, score: ${score}/100)`;
+    await sendSlackNotification(slackUrl, slackMsg);
+  }
+}
+
+async function sendSlackNotification(webhookUrl: string, message: string) {
+  try {
+    await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: message }),
+    });
+  } catch (error) {
+    console.error("Slack notification failed:", error);
   }
 }

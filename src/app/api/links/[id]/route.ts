@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/modules/auth/auth";
 import { updateLink, toggleLink, deleteLink } from "@/modules/links";
+import { logAudit } from "@/modules/audit";
 
 export async function PATCH(
   req: NextRequest,
@@ -50,6 +51,7 @@ export async function DELETE(
 
     const { id } = await params;
     await deleteLink(session.user.orgId, id);
+    logAudit(session.user.orgId, session.user.id, "link.deleted", "link", id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Delete link error:", error);

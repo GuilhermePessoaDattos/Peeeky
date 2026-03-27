@@ -3,6 +3,7 @@ import { auth } from "@/modules/auth/auth";
 import { createDocument, getDocuments } from "@/modules/documents";
 import { checkPlanLimit } from "@/lib/plan-check";
 import { uploadRateLimit } from "@/lib/ratelimit";
+import { logAudit } from "@/modules/audit";
 
 // Allow up to 60s for upload + text extraction
 export const maxDuration = 60;
@@ -56,6 +57,8 @@ export async function POST(req: NextRequest) {
       session.user.id,
       file,
     );
+
+    logAudit(session.user.orgId, session.user.id, "document.created", "document", document.id);
 
     return NextResponse.json({ success: true, document }, { status: 201 });
   } catch (error) {

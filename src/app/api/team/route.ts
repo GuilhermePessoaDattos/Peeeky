@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/modules/auth/auth";
 import { getOrgMembers, inviteMember } from "@/modules/orgs";
 import { checkPlanLimit } from "@/lib/plan-check";
+import { logAudit } from "@/modules/audit";
 
 export async function GET() {
   try {
@@ -45,6 +46,8 @@ export async function POST(req: NextRequest) {
       role,
       session.user.name || session.user.email || "Someone"
     );
+
+    logAudit(session.user.orgId, session.user.id, "member.invited", "membership", membership.id, { email });
 
     return NextResponse.json({ success: true, membership }, { status: 201 });
   } catch (error: unknown) {

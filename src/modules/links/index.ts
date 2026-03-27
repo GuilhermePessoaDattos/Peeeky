@@ -58,7 +58,11 @@ export async function getLinkBySlug(slug: string) {
   return prisma.link.findUnique({
     where: { slug },
     include: {
-      document: true,
+      document: {
+        include: {
+          org: { select: { name: true, logoUrl: true, brandColor: true, plan: true } },
+        },
+      },
     },
   });
 }

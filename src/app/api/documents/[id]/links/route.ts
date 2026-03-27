@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/modules/auth/auth";
 import { createLink, getLinks } from "@/modules/links";
 import { checkLinksPerDoc } from "@/lib/plan-check";
+import { logAudit } from "@/modules/audit";
 
 export async function POST(
   req: NextRequest,
@@ -25,6 +26,8 @@ export async function POST(
 
     const body = await req.json().catch(() => ({}));
     const link = await createLink(session.user.orgId, id, body.name);
+
+    logAudit(session.user.orgId, session.user.id, "link.created", "link", link.id);
 
     return NextResponse.json({ success: true, link }, { status: 201 });
   } catch (error) {

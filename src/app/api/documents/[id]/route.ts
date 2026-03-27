@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/modules/auth/auth";
 import { getDocument, deleteDocument } from "@/modules/documents";
+import { logAudit } from "@/modules/audit";
 
 export async function GET(
   req: NextRequest,
@@ -40,6 +41,7 @@ export async function DELETE(
 
     const { id } = await params;
     await deleteDocument(session.user.orgId, id);
+    logAudit(session.user.orgId, session.user.id, "document.deleted", "document", id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Delete error:", error);

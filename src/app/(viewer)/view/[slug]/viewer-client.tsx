@@ -15,12 +15,17 @@ interface ViewerClientProps {
   totalPages: number;
   allowDownload?: boolean;
   viewerEmail?: string;
+  enableWatermark?: boolean;
   enableAIChat?: boolean;
+  orgLogoUrl?: string | null;
+  orgBrandColor?: string | null;
+  orgName?: string | null;
+  orgPlan?: string;
 }
 
 const MAX_CHAT_MESSAGES = 20;
 
-export function ViewerClient({ signedUrl, documentName, linkId, totalPages, allowDownload, viewerEmail, enableAIChat }: ViewerClientProps) {
+export function ViewerClient({ signedUrl, documentName, linkId, totalPages, allowDownload, viewerEmail, enableWatermark, enableAIChat, orgLogoUrl, orgBrandColor, orgName, orgPlan }: ViewerClientProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [viewId, setViewId] = useState<string | null>(null);
@@ -165,9 +170,14 @@ export function ViewerClient({ signedUrl, documentName, linkId, totalPages, allo
     <div className="flex min-h-screen flex-col bg-[#1A1A2E]">
       {/* Header */}
       <header className="flex h-14 items-center justify-between border-b border-white/10 px-4">
-        <span className="text-sm font-medium text-white/80 truncate max-w-[200px]">
-          {documentName}
-        </span>
+        <div className="flex items-center gap-2 truncate max-w-[250px]">
+          {orgLogoUrl ? (
+            <img src={orgLogoUrl} alt={orgName || "Logo"} className="h-6 w-auto object-contain" />
+          ) : null}
+          <span className="text-sm font-medium text-white/80 truncate">
+            {documentName}
+          </span>
+        </div>
         <span className="text-sm text-white/50">
           {currentPage} / {numPages}
         </span>
@@ -195,23 +205,37 @@ export function ViewerClient({ signedUrl, documentName, linkId, totalPages, allo
 
       {/* PDF Viewer */}
       <div className="flex flex-1 items-center justify-center overflow-auto p-4">
-        <Document
-          file={signedUrl}
-          onLoadSuccess={({ numPages: n }) => setNumPages(n)}
-          loading={
-            <div className="text-white/50">Loading document...</div>
-          }
-          error={
-            <div className="text-red-400">Failed to load document.</div>
-          }
-        >
-          <Page
-            pageNumber={currentPage}
-            scale={scale}
-            renderTextLayer={true}
-            renderAnnotationLayer={true}
-          />
-        </Document>
+        <div className="relative">
+          <Document
+            file={signedUrl}
+            onLoadSuccess={({ numPages: n }) => setNumPages(n)}
+            loading={
+              <div className="text-white/50">Loading document...</div>
+            }
+            error={
+              <div className="text-red-400">Failed to load document.</div>
+            }
+          >
+            <Page
+              pageNumber={currentPage}
+              scale={scale}
+              renderTextLayer={true}
+              renderAnnotationLayer={true}
+            />
+          </Document>
+          {enableWatermark && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
+              <div className="rotate-[-35deg] text-center opacity-[0.08] select-none">
+                <p className="text-4xl font-bold text-[#1A1A2E] whitespace-nowrap">
+                  {viewerEmail || "Confidential"}
+                </p>
+                <p className="text-lg text-[#1A1A2E]">
+                  {new Date().toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Navigation */}
@@ -244,17 +268,19 @@ export function ViewerClient({ signedUrl, documentName, linkId, totalPages, allo
         </button>
       </footer>
 
-      {/* Badge */}
-      <div className="flex justify-center pb-2">
-        <a
-          href="https://peeeky.com?utm_source=viewer&utm_medium=badge&utm_campaign=viral"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[10px] text-white/20 hover:text-white/40 transition"
-        >
-          Secured by Peeeky — Track your documents free &rarr;
-        </a>
-      </div>
+      {/* Badge — hidden on PRO and BUSINESS plans */}
+      {orgPlan === "FREE" && (
+        <div className="flex justify-center pb-2">
+          <a
+            href="https://peeeky.com?utm_source=viewer&utm_medium=badge&utm_campaign=viral"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-white/20 hover:text-white/40 transition"
+          >
+            Secured by Peeeky — Track your documents free &rarr;
+          </a>
+        </div>
+      )}
 
       {/* AI Chat Widget */}
       {enableAIChat && (

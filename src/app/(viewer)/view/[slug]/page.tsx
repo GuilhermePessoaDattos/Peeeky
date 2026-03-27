@@ -70,7 +70,12 @@ export default async function ViewerPage({
       linkId={link.id}
       totalPages={link.document.pageCount}
       allowDownload={link.allowDownload}
+      enableWatermark={link.enableWatermark}
       enableAIChat={link.enableAIChat}
+      orgLogoUrl={link.document.org?.logoUrl || null}
+      orgBrandColor={link.document.org?.brandColor || null}
+      orgName={link.document.org?.name || null}
+      orgPlan={link.document.org?.plan || "FREE"}
     />
   );
 }
