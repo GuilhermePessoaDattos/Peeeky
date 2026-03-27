@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/modules/auth/auth";
+import { LandingPage } from "./(marketing)/landing";
 
 export default async function Home() {
   const session = await auth();
@@ -8,5 +9,5 @@ export default async function Home() {
     redirect("/documents");
   }
 
-  redirect("/login");
+  return <LandingPage />;
 }

@@ -8,6 +8,11 @@ const { auth } = NextAuth(authConfig);
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
+  // Root path serves the landing page (auth check is in page.tsx)
+  if (pathname === "/") {
+    return NextResponse.next();
+  }
+
   const publicPaths = ["/login", "/api/auth", "/api/health", "/api/debug-auth", "/api/track", "/api/links", "/api/webhooks", "/api/ai", "/view"];
   if (publicPaths.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
