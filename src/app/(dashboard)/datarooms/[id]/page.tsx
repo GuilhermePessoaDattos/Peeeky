@@ -32,6 +32,163 @@ interface OrgDocument {
   status: string;
 }
 
+interface DataRoomViewer {
+  viewer: string;
+  device: string | null;
+  docsViewed: number;
+  totalDocs: number;
+  totalDuration: number;
+  avgScore: number;
+  scoreColor: string;
+  scoreLabel: string;
+  lastSeen: string;
+  viewCount: number;
+}
+
+interface DocBreakdown {
+  documentId: string;
+  name: string;
+  fileType: string;
+  pageCount: number;
+  totalViews: number;
+  avgDuration: number;
+  avgCompletion: number;
+}
+
+interface DataRoomAnalytics {
+  uniqueViewers: number;
+  totalViews: number;
+  avgEngagement: number;
+  viewers: DataRoomViewer[];
+  docBreakdown: DocBreakdown[];
+}
+
+function formatDuration(seconds: number) {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}m ${s}s`;
+}
+
+function DataRoomAnalyticsTab({ dataRoomId }: { dataRoomId: string }) {
+  const [analytics, setAnalytics] = useState<DataRoomAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/datarooms/${dataRoomId}/analytics`)
+      .then((r) => r.json())
+      .then((data) => { setAnalytics(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [dataRoomId]);
+
+  if (loading) return <div className="py-8 text-center text-sm text-gray-400">Loading analytics...</div>;
+  if (!analytics) return <div className="py-8 text-center text-sm text-gray-400">Failed to load analytics.</div>;
+
+  return (
+    <div className="space-y-8">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <p className="text-xs font-medium text-gray-500">Unique Viewers</p>
+          <p className="mt-1 text-2xl font-bold text-[#1A1A2E]">{analytics.uniqueViewers}</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <p className="text-xs font-medium text-gray-500">Total Views</p>
+          <p className="mt-1 text-2xl font-bold text-[#1A1A2E]">{analytics.totalViews}</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <p className="text-xs font-medium text-gray-500">Avg Engagement</p>
+          <p className="mt-1 text-2xl font-bold text-[#1A1A2E]">{analytics.avgEngagement}</p>
+        </div>
+      </div>
+
+      {/* Viewers Table */}
+      <div>
+        <h3 className="mb-3 font-display text-lg font-semibold text-[#1A1A2E]">Viewers</h3>
+        {analytics.viewers.length === 0 ? (
+          <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center">
+            <p className="text-sm text-gray-500">No views yet. Share the Data Room link to start tracking.</p>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-gray-200">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Viewer</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Docs Viewed</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Views</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Time</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Score</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Last Seen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analytics.viewers.map((v, i) => (
+                  <tr key={i} className="border-b last:border-0">
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-[#1A1A2E]">{v.viewer}</div>
+                      {v.device && <div className="text-xs text-gray-400">{v.device}</div>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-[#1A1A2E]">{v.docsViewed}</span>
+                      <span className="text-gray-400"> / {v.totalDocs}</span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{v.viewCount}</td>
+                    <td className="px-4 py-3 text-gray-600">{formatDuration(v.totalDuration)}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                        style={{ backgroundColor: v.scoreColor + "20", color: v.scoreColor }}
+                      >
+                        {v.avgScore} — {v.scoreLabel}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-400">
+                      {new Date(v.lastSeen).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Per-Document Breakdown */}
+      <div>
+        <h3 className="mb-3 font-display text-lg font-semibold text-[#1A1A2E]">Document Breakdown</h3>
+        <div className="space-y-2">
+          {analytics.docBreakdown.map((d) => (
+            <div key={d.documentId} className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4">
+              <div className="flex items-center gap-3">
+                <span className="text-lg">{d.fileType === "PDF" ? "\u{1F4C4}" : "\u{1F4CA}"}</span>
+                <div>
+                  <p className="text-sm font-medium text-[#1A1A2E]">{d.name}</p>
+                  <p className="text-xs text-gray-400">{d.pageCount} pages</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-6 text-sm">
+                <div className="text-center">
+                  <p className="font-semibold text-[#1A1A2E]">{d.totalViews}</p>
+                  <p className="text-xs text-gray-400">views</p>
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold text-[#1A1A2E]">{formatDuration(d.avgDuration)}</p>
+                  <p className="text-xs text-gray-400">avg time</p>
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold text-[#1A1A2E]">{d.avgCompletion}%</p>
+                  <p className="text-xs text-gray-400">completion</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DataRoomDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [room, setRoom] = useState<DataRoomDetail | null>(null);
@@ -40,6 +197,7 @@ export default function DataRoomDetailPage({ params }: { params: Promise<{ id: s
   const [orgDocs, setOrgDocs] = useState<OrgDocument[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<"documents" | "analytics">("documents");
 
   const fetchRoom = useCallback(async () => {
     try {
@@ -196,7 +354,30 @@ export default function DataRoomDetailPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="mb-6 flex gap-1 rounded-lg bg-gray-100 p-1">
+        <button
+          onClick={() => setActiveTab("documents")}
+          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition ${
+            activeTab === "documents" ? "bg-white text-[#1A1A2E] shadow-sm" : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Documents ({room.documents.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("analytics")}
+          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition ${
+            activeTab === "analytics" ? "bg-white text-[#1A1A2E] shadow-sm" : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Analytics
+        </button>
+      </div>
+
+      {activeTab === "analytics" && <DataRoomAnalyticsTab dataRoomId={id} />}
+
       {/* Documents */}
+      {activeTab === "documents" && <>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="font-display text-lg font-semibold text-[#1A1A2E]">
           Documents ({room.documents.length})
@@ -275,6 +456,7 @@ export default function DataRoomDetailPage({ params }: { params: Promise<{ id: s
           ))}
         </div>
       )}
+      </>}
     </div>
   );
 }
