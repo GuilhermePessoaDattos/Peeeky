@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, use } from "react";
 import Link from "next/link";
+import { Heatmap } from "@/components/analytics/Heatmap";
 
 interface LinkItem {
   id: string;
@@ -292,7 +293,7 @@ function LinkSettings({
   );
 }
 
-function AnalyticsTab({ documentId }: { documentId: string }) {
+function AnalyticsTab({ documentId, pageCount }: { documentId: string; pageCount: number }) {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -344,6 +345,16 @@ function AnalyticsTab({ documentId }: { documentId: string }) {
           <div className="mt-1 font-display text-2xl font-bold text-[#00B894]">{analytics.avgCompletion}%</div>
         </div>
       </div>
+
+      {/* Page Engagement Heatmap */}
+      {analytics.pageAnalytics.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-6">
+          <Heatmap
+            pages={analytics.pageAnalytics}
+            totalPages={pageCount || analytics.pageAnalytics.length}
+          />
+        </div>
+      )}
 
       {/* Per-Page Time Chart */}
       {analytics.pageAnalytics.length > 0 && (
@@ -705,7 +716,7 @@ export default function DocumentDetailPage({
         </div>
       )}
 
-      {activeTab === "analytics" && <AnalyticsTab documentId={id} />}
+      {activeTab === "analytics" && <AnalyticsTab documentId={id} pageCount={doc.pageCount} />}
     </div>
   );
 }

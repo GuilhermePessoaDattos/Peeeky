@@ -25,6 +25,7 @@ model Organization {
   documents Document[]
   domains   CustomDomain[]
   audits    AuditEvent[]
+  dataRooms DataRoom[]
 }
 
 model User {
@@ -71,11 +72,46 @@ model Document {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  org        Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  links      Link[]
-  embeddings DocumentEmbedding[]
+  org            Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  links          Link[]
+  embeddings     DocumentEmbedding[]
+  dataRoomDocs   DataRoomDocument[]
 
   @@index([orgId])
+}
+
+// ─── Data Rooms ─────────────────────────────────────────
+
+model DataRoom {
+  id           String    @id @default(cuid())
+  name         String
+  description  String?
+  slug         String    @unique
+  orgId        String
+  createdById  String
+  isActive     Boolean   @default(true)
+  password     String?
+  requireEmail Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  org       Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  documents DataRoomDocument[]
+
+  @@index([orgId])
+}
+
+model DataRoomDocument {
+  id         String   @id @default(cuid())
+  dataRoomId String
+  documentId String
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  dataRoom DataRoom @relation(fields: [dataRoomId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([dataRoomId, documentId])
 }
 
 model Link {

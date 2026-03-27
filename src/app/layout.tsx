@@ -15,9 +15,32 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Peeeky — Share documents. Know who reads them.",
+  title: {
+    default: "Peeeky — Share documents. Know who reads them.",
+    template: "%s | Peeeky",
+  },
   description:
-    "Secure document sharing with page-level analytics and AI intelligence.",
+    "Secure document sharing with page-level analytics and AI intelligence. Track who reads your pitch decks, proposals, and contracts.",
+  metadataBase: new URL("https://peeeky.com"),
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://peeeky.com",
+    siteName: "Peeeky",
+    title: "Peeeky — Share documents. Know who reads them.",
+    description:
+      "Secure document sharing with page-level analytics and AI intelligence.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Peeeky — Share documents. Know who reads them.",
+    description:
+      "Track who reads your pitch decks, proposals, and contracts. AI-powered document intelligence.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
