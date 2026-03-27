@@ -59,6 +59,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    if (action === "heartbeat") {
+      if (!linkId || !viewId) {
+        return NextResponse.json({ error: "Missing linkId or viewId" }, { status: 400 });
+      }
+      const heartbeatLink = await prisma.link.findUnique({
+        where: { id: linkId },
+        select: { documentId: true },
+      });
+      if (heartbeatLink) {
+        await redis.sadd(`viewing:${heartbeatLink.documentId}`, viewId);
+        await redis.set(`viewer:${heartbeatLink.documentId}:${viewId}`, "1", { ex: 30 });
+      }
+      return NextResponse.json({ ok: true });
+    }
+
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     console.error("Track error:", error);

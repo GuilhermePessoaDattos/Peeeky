@@ -52,6 +52,23 @@ export function ViewerClient({ signedUrl, documentName, linkId, totalPages, allo
       .catch(console.error);
   }, [linkId]);
 
+  // Heartbeat for "currently viewing" indicator
+  useEffect(() => {
+    if (!viewId) return;
+
+    const sendHeartbeat = () => {
+      fetch("/api/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "heartbeat", linkId, viewId }),
+      }).catch(() => {});
+    };
+
+    sendHeartbeat();
+    const interval = setInterval(sendHeartbeat, 15000);
+    return () => clearInterval(interval);
+  }, [viewId, linkId]);
+
   // Track page view on page change
   const trackPageView = useCallback(
     (page: number, duration: number) => {

@@ -458,6 +458,7 @@ export default function DocumentDetailPage({
   const [copied, setCopied] = useState<string | null>(null);
   const [expandedLink, setExpandedLink] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"links" | "analytics">("links");
+  const [viewingNow, setViewingNow] = useState(0);
 
   const fetchDocument = useCallback(async () => {
     try {
@@ -474,6 +475,19 @@ export default function DocumentDetailPage({
   useEffect(() => {
     fetchDocument();
   }, [fetchDocument]);
+
+  // Poll real-time viewer count
+  useEffect(() => {
+    const fetchViewers = () => {
+      fetch(`/api/documents/${id}/viewers-now`)
+        .then((r) => r.json())
+        .then((data) => setViewingNow(data.count || 0))
+        .catch(() => {});
+    };
+    fetchViewers();
+    const interval = setInterval(fetchViewers, 10000);
+    return () => clearInterval(interval);
+  }, [id]);
 
   const createLink = async () => {
     setCreating(true);
@@ -542,7 +556,15 @@ export default function DocumentDetailPage({
         </Link>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="font-display text-2xl font-bold text-[#1A1A2E]">{doc.name}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="font-display text-2xl font-bold text-[#1A1A2E]">{doc.name}</h1>
+              {viewingNow > 0 && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  {viewingNow} viewing now
+                </span>
+              )}
+            </div>
             <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-gray-500">
               <span>{doc.fileType}</span>
               <span>&bull;</span>
