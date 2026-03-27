@@ -4,6 +4,8 @@ import Resend from "next-auth/providers/resend";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
+import { cookies } from "next/headers";
+import { createReferral } from "@/modules/referrals";
 import { authConfig } from "./auth.config";
 
 // Full config — includes Prisma adapter and DB callbacks
@@ -36,7 +38,7 @@ export const {
         ? `${user.name}'s Workspace`
         : "My Workspace";
 
-      await prisma.organization.create({
+      const newOrg = await prisma.organization.create({
         data: {
           name: orgName,
           slug,
@@ -48,6 +50,17 @@ export const {
           },
         },
       });
+
+      // Check for referral cookie and create referral record
+      try {
+        const cookieStore = await cookies();
+        const refCode = cookieStore.get("peeeky_ref")?.value;
+        if (refCode) {
+          await createReferral(refCode, newOrg.id);
+        }
+      } catch {
+        // cookies() may not be available in all contexts
+      }
     },
   },
   callbacks: {

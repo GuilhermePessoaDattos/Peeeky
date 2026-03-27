@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { activateReferral } from "@/modules/referrals";
 
 const PRICES = {
   PRO_MONTHLY: "price_pro_monthly",
@@ -168,6 +169,9 @@ export async function handleWebhookEvent(event: Stripe.Event) {
             stripeSubId: session.subscription as string,
           },
         });
+
+        // Activate referral on first payment
+        await activateReferral(orgId);
       }
       break;
     }

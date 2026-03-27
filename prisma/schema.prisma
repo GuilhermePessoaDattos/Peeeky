@@ -26,6 +26,7 @@ model Organization {
   domains   CustomDomain[]
   audits    AuditEvent[]
   dataRooms DataRoom[]
+  referral  Referral?
 }
 
 model User {
@@ -34,12 +35,14 @@ model User {
   email         String    @unique
   emailVerified DateTime?
   image         String?
+  referralCode  String?   @unique
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   memberships Membership[]
   accounts    Account[]
   sessions    Session[]
+  referrals   Referral[] @relation("referrals_given")
 }
 
 model Membership {
@@ -251,6 +254,21 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// ─── Referrals ────────────────────────────────────────────
+
+model Referral {
+  id            String   @id @default(cuid())
+  referrerId    String
+  referredOrgId String   @unique
+  code          String
+  status        String   @default("PENDING") // PENDING, ACTIVE, PAID
+  commission    Float    @default(0.20)
+  createdAt     DateTime @default(now())
+
+  referrer    User         @relation("referrals_given", fields: [referrerId], references: [id])
+  referredOrg Organization @relation(fields: [referredOrgId], references: [id])
 }
 
 // ─── Enums ──────────────────────────────────────────────

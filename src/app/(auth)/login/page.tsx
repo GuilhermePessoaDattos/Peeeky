@@ -1,8 +1,11 @@
 import { signIn } from "@/modules/auth/auth";
+import { Suspense } from "react";
+import { RefCapture } from "./ref-capture";
 
 export default function LoginPage() {
   return (
     <div className="rounded-2xl bg-white p-8 shadow-xl">
+      <Suspense><RefCapture /></Suspense>
       <div className="mb-8 text-center">
         <h1 className="font-display text-2xl font-bold text-[#1A1A2E]">
           p<span className="text-[#6C5CE7]">eee</span>ky
