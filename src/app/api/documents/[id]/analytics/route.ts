@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/modules/auth/auth";
+import { redis } from "@/lib/redis";
 import { getDocumentAnalytics, computeEngagementScore } from "@/modules/tracking";
 
 export async function GET(
@@ -13,6 +14,16 @@ export async function GET(
     }
 
     const { id } = await params;
+
+    // Check Redis cache first
+    const cacheKey = `analytics:${id}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      const data = typeof cached === "string" ? JSON.parse(cached) : cached;
+      return NextResponse.json(data);
+    }
+
+    // Cache miss — compute fresh
     const analytics = await getDocumentAnalytics(session.user.orgId, id);
 
     // Add engagement scores to views
@@ -36,11 +47,16 @@ export async function GET(
       }))
       .sort((a, b) => a.page - b.page);
 
-    return NextResponse.json({
+    const result = {
       ...analytics,
       views: viewsWithScores,
       pageAnalytics,
-    });
+    };
+
+    // Cache for 5 minutes
+    await redis.set(cacheKey, JSON.stringify(result), { ex: 300 });
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Analytics error:", error);
     return NextResponse.json({ error: "Failed to fetch analytics" }, { status: 500 });

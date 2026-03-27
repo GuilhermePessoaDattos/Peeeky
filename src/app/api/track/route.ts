@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { recordView, recordPageView, updateViewDuration } from "@/modules/tracking";
 import { sendViewNotification } from "@/modules/notifications";
 import { trackRateLimit } from "@/lib/ratelimit";
+import { redis } from "@/lib/redis";
+import { prisma } from "@/lib/prisma";
 
 // Public endpoint — no auth required (viewers are anonymous)
 export async function POST(req: NextRequest) {
@@ -41,6 +43,15 @@ export async function POST(req: NextRequest) {
 
     if (action === "view_end") {
       await updateViewDuration(viewId, duration, completionRate);
+
+      // Invalidate analytics cache for this document
+      const viewRecord = await prisma.view.findUnique({
+        where: { id: viewId },
+        select: { link: { select: { documentId: true } } },
+      });
+      if (viewRecord?.link?.documentId) {
+        await redis.del(`analytics:${viewRecord.link.documentId}`);
+      }
 
       // Send notification async (don't block the response)
       sendViewNotification(viewId).catch(console.error);
