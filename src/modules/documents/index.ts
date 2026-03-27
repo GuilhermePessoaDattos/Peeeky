@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { uploadFile, deleteFile } from "@/lib/r2";
 import { nanoid } from "nanoid";
+import { convertPptxToPdf } from "@/lib/cloudconvert";
 
 export async function createDocument(
   orgId: string,
@@ -10,25 +11,45 @@ export async function createDocument(
   const id = nanoid(12);
   const buffer = Buffer.from(await file.arrayBuffer());
   const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
+  const isPptx = ext === "pptx";
   const key = `${orgId}/${id}/${file.name}`;
-  const fileType = ext === "pptx" ? "PPTX" : "PDF";
+  const fileType = isPptx ? "PPTX" : "PDF";
 
-  // Upload to R2
+  // Upload original file to R2
   await uploadFile(key, buffer, file.type);
 
-  // Create document record
-  // Text extraction happens on-demand when AI Chat is first used
+  // Create document record (PROCESSING if PPTX, READY if PDF)
   const document = await prisma.document.create({
     data: {
       id,
       name: file.name.replace(/\.(pdf|pptx)$/i, ""),
       fileUrl: key,
       fileType,
-      status: "READY",
+      status: isPptx ? "PROCESSING" : "READY",
       orgId,
       createdById: userId,
     },
   });
+
+  // Convert PPTX to PDF async (don't block response)
+  if (isPptx) {
+    convertPptxToPdf(buffer, file.name)
+      .then(async (pdfBuffer) => {
+        const pdfKey = `${orgId}/${id}/${file.name.replace(/\.pptx$/i, ".pdf")}`;
+        await uploadFile(pdfKey, pdfBuffer, "application/pdf");
+        await prisma.document.update({
+          where: { id },
+          data: { fileUrl: pdfKey, status: "READY" },
+        });
+      })
+      .catch(async (error) => {
+        console.error("PPTX conversion failed:", error);
+        await prisma.document.update({
+          where: { id },
+          data: { status: "ERROR" },
+        });
+      });
+  }
 
   return document;
 }
