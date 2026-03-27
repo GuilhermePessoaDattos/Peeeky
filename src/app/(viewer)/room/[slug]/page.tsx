@@ -1,10 +1,18 @@
-import { getDataRoomBySlug } from "@/modules/datarooms";
+import { getDataRoomBySlug, getVisibleDocuments } from "@/modules/datarooms";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 export default async function DataRoomPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const room = await getDataRoomBySlug(slug);
   if (!room || !room.isActive) notFound();
+
+  // Get viewer email from cookie (set during email verification gate)
+  const viewerEmail = (await cookies()).get("viewer_email")?.value || null;
+  const visibleDocs = await getVisibleDocuments(room.id, viewerEmail);
+
+  // If access rules exist but viewer has no access, show empty state
+  const documents = visibleDocs ?? room.documents;
 
   return (
     <div className="min-h-screen bg-[#F8F9FC]">
@@ -13,13 +21,18 @@ export default async function DataRoomPage({ params }: { params: Promise<{ slug:
           <h1 className="font-display text-2xl font-bold text-[#1A1A2E]">{room.name}</h1>
           {room.description && <p className="mt-1 text-sm text-gray-500">{room.description}</p>}
           <p className="mt-2 text-xs text-gray-400">
-            {room.org.name} &middot; {room.documents.length} document{room.documents.length !== 1 ? "s" : ""}
+            {room.org.name} &middot; {documents.length} document{documents.length !== 1 ? "s" : ""}
           </p>
         </div>
       </header>
       <div className="mx-auto max-w-4xl px-6 py-8">
         <div className="space-y-3">
-          {room.documents.map((d, i) => (
+          {documents.length === 0 && (
+            <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center">
+              <p className="text-sm text-gray-500">No documents available for your access level.</p>
+            </div>
+          )}
+          {documents.map((d, i) => (
             <div
               key={d.id}
               className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-5 transition hover:shadow-md"

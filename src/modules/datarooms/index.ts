@@ -85,3 +85,69 @@ export async function getDataRoomBySlug(slug: string) {
     },
   });
 }
+
+// ─── Access Control ───────────────────────────────────
+
+export async function setDataRoomAccess(
+  dataRoomId: string,
+  email: string,
+  documentIds: string[]
+) {
+  return prisma.dataRoomAccess.upsert({
+    where: { dataRoomId_email: { dataRoomId, email } },
+    create: { dataRoomId, email, documentIds },
+    update: { documentIds },
+  });
+}
+
+export async function removeDataRoomAccess(dataRoomId: string, email: string) {
+  return prisma.dataRoomAccess.delete({
+    where: { dataRoomId_email: { dataRoomId, email } },
+  });
+}
+
+export async function getDataRoomAccessRules(dataRoomId: string) {
+  return prisma.dataRoomAccess.findMany({
+    where: { dataRoomId },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function getVisibleDocuments(
+  dataRoomId: string,
+  viewerEmail: string | null
+) {
+  const room = await prisma.dataRoom.findUnique({
+    where: { id: dataRoomId },
+    include: {
+      documents: {
+        include: { document: true },
+        orderBy: { order: "asc" },
+      },
+      accessRules: true,
+    },
+  });
+
+  if (!room) return null;
+
+  // If no access rules exist, show all documents (backwards compatible)
+  if (room.accessRules.length === 0) {
+    return room.documents;
+  }
+
+  // If viewer has no email, show no restricted docs
+  if (!viewerEmail) {
+    return [];
+  }
+
+  // Find matching access rule
+  const rule = room.accessRules.find(
+    (r) => r.email.toLowerCase() === viewerEmail.toLowerCase()
+  );
+
+  if (!rule) return [];
+
+  return room.documents.filter((d) =>
+    rule.documentIds.includes(d.documentId)
+  );
+}
