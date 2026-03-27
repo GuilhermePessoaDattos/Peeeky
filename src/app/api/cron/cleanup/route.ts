@@ -23,14 +23,15 @@ export async function GET(req: NextRequest) {
   // Delete orphan page views (no parent view)
   const orphanPageViews = await prisma.pageView.deleteMany({
     where: {
-      view: null,
+      view: { is: undefined },
+      viewId: { not: { in: (await prisma.view.findMany({ select: { id: true } })).map(v => v.id) } },
     },
   });
 
   // Delete embeddings for deleted documents
   const orphanEmbeddings = await prisma.documentEmbedding.deleteMany({
     where: {
-      document: null,
+      documentId: { not: { in: (await prisma.document.findMany({ select: { id: true } })).map(d => d.id) } },
     },
   });
 
