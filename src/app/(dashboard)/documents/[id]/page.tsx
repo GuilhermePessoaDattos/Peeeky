@@ -163,7 +163,7 @@ function LinkSettings({
       </div>
 
       {/* Toggles */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
           <input
             type="checkbox"
@@ -218,7 +218,7 @@ function LinkSettings({
       </div>
 
       {/* Expiry & Max Views */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-1.5 block text-xs font-medium text-gray-600">
             Expires At
@@ -327,7 +327,7 @@ function AnalyticsTab({ documentId, pageCount }: { documentId: string; pageCount
   return (
     <div className="space-y-8">
       {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <div className="text-xs font-medium uppercase text-gray-400">Total Views</div>
           <div className="mt-1 font-display text-2xl font-bold text-[#1A1A2E]">{analytics.totalViews}</div>
@@ -540,10 +540,10 @@ export default function DocumentDetailPage({
         <Link href="/documents" className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-[#6C5CE7]">
           &larr; Back to Documents
         </Link>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="font-display text-2xl font-bold text-[#1A1A2E]">{doc.name}</h1>
-            <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
+            <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-gray-500">
               <span>{doc.fileType}</span>
               <span>&bull;</span>
               <span>{doc.totalViews} total views</span>
@@ -582,7 +582,7 @@ export default function DocumentDetailPage({
       )}
 
       {/* Stats */}
-      <div className="mb-8 grid grid-cols-3 gap-4">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <div className="text-xs font-medium uppercase text-gray-400">Total Views</div>
           <div className="mt-1 font-display text-2xl font-bold text-[#1A1A2E]">{doc.totalViews}</div>
@@ -649,9 +649,9 @@ export default function DocumentDetailPage({
                   key={link.id}
                   className="overflow-hidden rounded-xl border border-gray-200 bg-white"
                 >
-                  <div className="flex items-center justify-between p-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
                         <code className="text-sm font-medium text-[#1A1A2E]">
                           /view/{link.slug}
                         </code>
@@ -685,7 +685,7 @@ export default function DocumentDetailPage({
                         {link._count.views} views &bull; Created {new Date(link.createdAt).toLocaleDateString()}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         onClick={() => toggleLinkActive(link.id)}
                         className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
