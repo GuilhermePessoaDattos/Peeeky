@@ -120,6 +120,77 @@ export async function sendViewNotification(viewId: string) {
   }
 }
 
+export async function sendWelcomeEmail(email: string, name: string | null) {
+  const firstName = name?.split(" ")[0] || "there";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://peeeky.com";
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 500px; margin: 0 auto;">
+      <div style="padding: 24px; background: #1A1A2E; border-radius: 12px 12px 0 0;">
+        <h1 style="margin: 0; font-size: 18px; color: white;">
+          p<span style="color: #6C5CE7;">eee</span>ky
+        </h1>
+      </div>
+      <div style="padding: 32px 24px; background: white; border: 1px solid #E8E8F0; border-top: none; border-radius: 0 0 12px 12px;">
+        <h2 style="margin: 0 0 16px; font-size: 20px; color: #1A1A2E;">
+          Welcome to Peeeky, ${firstName}! 👋
+        </h2>
+        <p style="margin: 0 0 16px; font-size: 14px; color: #4A4A68; line-height: 1.6;">
+          You just unlocked the ability to know <strong>exactly</strong> how people engage with your documents.
+        </p>
+
+        <div style="margin: 20px 0; padding: 20px; background: #F8F9FC; border-radius: 8px;">
+          <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #1A1A2E;">Get started in 3 steps:</p>
+          <table style="width: 100%; font-size: 13px; color: #4A4A68;">
+            <tr>
+              <td style="padding: 6px 0; vertical-align: top;">
+                <span style="display:inline-block; width:22px; height:22px; background:#6C5CE7; color:white; border-radius:50%; text-align:center; line-height:22px; font-size:12px; font-weight:600;">1</span>
+              </td>
+              <td style="padding: 6px 8px;"><strong>Upload a PDF</strong> &mdash; your pitch deck, proposal, or contract</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; vertical-align: top;">
+                <span style="display:inline-block; width:22px; height:22px; background:#6C5CE7; color:white; border-radius:50%; text-align:center; line-height:22px; font-size:12px; font-weight:600;">2</span>
+              </td>
+              <td style="padding: 6px 8px;"><strong>Create a link</strong> &mdash; set password, email gate, or expiry</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; vertical-align: top;">
+                <span style="display:inline-block; width:22px; height:22px; background:#6C5CE7; color:white; border-radius:50%; text-align:center; line-height:22px; font-size:12px; font-weight:600;">3</span>
+              </td>
+              <td style="padding: 6px 8px;"><strong>Share &amp; track</strong> &mdash; see who reads what, page by page</td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="margin: 16px 0; font-size: 13px; color: #4A4A68; line-height: 1.6;">
+          Your free plan includes <strong>5 documents</strong>, <strong>unlimited viewers</strong>, and <strong>full analytics</strong>. No credit card needed.
+        </p>
+
+        <a href="${appUrl}/documents"
+           style="display: block; text-align: center; padding: 14px; background: #6C5CE7; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600; margin-top: 20px;">
+          Upload Your First Document
+        </a>
+
+        <p style="margin: 24px 0 0; font-size: 12px; color: #9CA3AF; text-align: center;">
+          Questions? Reply to this email &mdash; we read every message.
+        </p>
+      </div>
+    </div>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: "Peeeky <onboarding@resend.dev>",
+      to: email,
+      subject: "Welcome to Peeeky — track your first document",
+      html,
+    });
+  } catch (error) {
+    console.error("Failed to send welcome email:", error);
+  }
+}
+
 async function sendSlackNotification(webhookUrl: string, message: string) {
   try {
     await fetch(webhookUrl, {

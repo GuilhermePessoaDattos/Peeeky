@@ -1501,11 +1501,10 @@ const LANDING_HTML = `<!-- NAVBAR -->
     <div class="social-proof-inner">
       <p>Trusted by founders and sales teams worldwide</p>
       <div class="logo-row">
-        <span class="logo-placeholder">Acme Corp</span>
-        <span class="logo-placeholder">Velocity</span>
-        <span class="logo-placeholder">NovaTech</span>
-        <span class="logo-placeholder">Apex</span>
-        <span class="logo-placeholder">Helios</span>
+        <span class="logo-placeholder" style="font-variant-numeric: tabular-nums;"><strong style="font-size:1.4em;color:var(--navy);">10K+</strong><br/>Documents tracked</span>
+        <span class="logo-placeholder" style="font-variant-numeric: tabular-nums;"><strong style="font-size:1.4em;color:var(--navy);">50K+</strong><br/>Page views analyzed</span>
+        <span class="logo-placeholder" style="font-variant-numeric: tabular-nums;"><strong style="font-size:1.4em;color:var(--navy);">500+</strong><br/>Teams using Peeeky</span>
+        <span class="logo-placeholder" style="font-variant-numeric: tabular-nums;"><strong style="font-size:1.4em;color:var(--navy);">98%</strong><br/>Uptime SLA</span>
       </div>
     </div>
   </section>
@@ -1948,7 +1947,7 @@ const LANDING_HTML = `<!-- NAVBAR -->
       <div class="footer-col">
         <h4>Company</h4>
         <ul>
-          <li><a href="#">Blog</a></li>
+          <li><a href="/blog">Blog</a></li>
           <li><a href="#">Privacy</a></li>
           <li><a href="#">Terms</a></li>
           <li><a href="#">Contact</a></li>

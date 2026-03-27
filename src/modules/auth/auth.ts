@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
 import { cookies } from "next/headers";
 import { createReferral } from "@/modules/referrals";
+import { sendWelcomeEmail } from "@/modules/notifications";
 import { authConfig } from "./auth.config";
 
 // Full config — includes Prisma adapter and DB callbacks
@@ -50,6 +51,9 @@ export const {
           },
         },
       });
+
+      // Send welcome email (async, don't block)
+      sendWelcomeEmail(user.email, user.name || null).catch(console.error);
 
       // Check for referral cookie and create referral record
       try {
