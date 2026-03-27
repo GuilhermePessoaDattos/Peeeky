@@ -454,6 +454,7 @@ export default function DocumentDetailPage({
   const [doc, setDoc] = useState<DocumentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [upgradeNeeded, setUpgradeNeeded] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [expandedLink, setExpandedLink] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"links" | "analytics">("links");
@@ -483,7 +484,13 @@ export default function DocumentDetailPage({
         body: JSON.stringify({}),
       });
       if (res.ok) {
+        setUpgradeNeeded(false);
         await fetchDocument();
+      } else {
+        const data = await res.json();
+        if (data.upgrade) {
+          setUpgradeNeeded(true);
+        }
       }
     } catch (error) {
       console.error("Failed to create link:", error);
@@ -561,6 +568,18 @@ export default function DocumentDetailPage({
           </div>
         </div>
       </div>
+
+      {upgradeNeeded && (
+        <div className="mb-6 flex items-center justify-between rounded-xl border border-[#6C5CE7]/20 bg-[#6C5CE7]/5 p-4">
+          <div>
+            <p className="text-sm font-medium text-[#1A1A2E]">You&apos;ve reached your plan limit</p>
+            <p className="text-xs text-gray-500">Upgrade to Pro for unlimited documents, links, and AI chat.</p>
+          </div>
+          <a href="/settings/billing" className="rounded-lg bg-[#6C5CE7] px-4 py-2 text-xs font-semibold text-white hover:bg-[#6C5CE7]/90">
+            Upgrade
+          </a>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="mb-8 grid grid-cols-3 gap-4">

@@ -41,12 +41,12 @@ export default async function DataRoomPage({ params }: { params: Promise<{ slug:
         </div>
         <div className="mt-8 text-center">
           <a
-            href="https://peeeky.com"
+            href="https://peeeky.com?utm_source=viewer&utm_medium=badge&utm_campaign=viral"
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-gray-300 hover:text-gray-400"
           >
-            Secured by Peeeky
+            Secured by Peeeky — Track your documents free &rarr;
           </a>
         </div>
       </div>

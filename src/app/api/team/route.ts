@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/modules/auth/auth";
 import { getOrgMembers, inviteMember } from "@/modules/orgs";
+import { checkPlanLimit } from "@/lib/plan-check";
 
 export async function GET() {
   try {
@@ -23,6 +24,14 @@ export async function POST(req: NextRequest) {
     // Only OWNER and ADMIN can invite
     if (!["OWNER", "ADMIN"].includes(session.user.role)) {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
+    const planCheck = await checkPlanLimit(session.user.orgId, "members");
+    if (!planCheck.allowed) {
+      return NextResponse.json(
+        { error: planCheck.message, upgrade: true },
+        { status: 403 },
+      );
     }
 
     const { email, role } = await req.json();

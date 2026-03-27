@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/modules/auth/auth";
 import { createLink, getLinks } from "@/modules/links";
+import { checkLinksPerDoc } from "@/lib/plan-check";
 
 export async function POST(
   req: NextRequest,
@@ -13,6 +14,15 @@ export async function POST(
     }
 
     const { id } = await params;
+
+    const planCheck = await checkLinksPerDoc(session.user.orgId, id);
+    if (!planCheck.allowed) {
+      return NextResponse.json(
+        { error: planCheck.message, upgrade: true },
+        { status: 403 },
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const link = await createLink(session.user.orgId, id, body.name);
 

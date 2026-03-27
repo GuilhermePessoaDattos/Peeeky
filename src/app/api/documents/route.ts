@@ -1,15 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/modules/auth/auth";
 import { createDocument, getDocuments } from "@/modules/documents";
+import { checkPlanLimit } from "@/lib/plan-check";
+import { uploadRateLimit } from "@/lib/ratelimit";
 
 // Allow up to 60s for upload + text extraction
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
+    const { success: rateLimitOk } = await uploadRateLimit.limit(ip);
+    if (!rateLimitOk) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+    }
+
     const session = await auth();
     if (!session?.user?.orgId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const planCheck = await checkPlanLimit(session.user.orgId, "documents");
+    if (!planCheck.allowed) {
+      return NextResponse.json(
+        { error: planCheck.message, upgrade: true },
+        { status: 403 },
+      );
     }
 
     const formData = await req.formData();

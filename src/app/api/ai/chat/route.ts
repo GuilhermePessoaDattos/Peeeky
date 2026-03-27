@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { chatWithDocument } from "@/modules/ai";
+import { checkPlanLimit, incrementAIChat } from "@/lib/plan-check";
+import { aiChatRateLimit } from "@/lib/ratelimit";
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
+    const { success: rateLimitOk } = await aiChatRateLimit.limit(ip);
+    if (!rateLimitOk) {
+      return NextResponse.json({ error: "Too many requests. Please wait." }, { status: 429 });
+    }
+
     const { linkId, question, conversationHistory } = await req.json();
 
     if (!linkId || !question) {
@@ -23,6 +31,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Link not found" }, { status: 404 });
     }
 
+    // Check AI chat plan limit
+    const planCheck = await checkPlanLimit(link.document.orgId, "aiChatsPerMonth");
+    if (!planCheck.allowed) {
+      return NextResponse.json(
+        { error: "AI chat limit reached for this month." },
+        { status: 403 },
+      );
+    }
+
     const chunkCount = await prisma.documentEmbedding.count({
       where: { documentId: link.documentId },
     });
@@ -39,6 +56,9 @@ export async function POST(req: NextRequest) {
       question,
       conversationHistory || []
     );
+
+    // Increment AI chat counter after successful response
+    await incrementAIChat(link.document.orgId);
 
     return NextResponse.json({ answer });
   } catch (error) {

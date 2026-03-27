@@ -17,6 +17,7 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [upgradeNeeded, setUpgradeNeeded] = useState(false);
 
   const fetchDocuments = useCallback(async () => {
     try {
@@ -50,6 +51,10 @@ export default function DocumentsPage() {
 
       if (!res.ok) {
         const data = await res.json();
+        if (data.upgrade) {
+          setUpgradeNeeded(true);
+          return;
+        }
         alert(data.error || "Upload failed");
         return;
       }
@@ -81,6 +86,17 @@ export default function DocumentsPage() {
 
   return (
     <div>
+      {upgradeNeeded && (
+        <div className="mb-6 flex items-center justify-between rounded-xl border border-[#6C5CE7]/20 bg-[#6C5CE7]/5 p-4">
+          <div>
+            <p className="text-sm font-medium text-[#1A1A2E]">You&apos;ve reached your plan limit</p>
+            <p className="text-xs text-gray-500">Upgrade to Pro for unlimited documents, links, and AI chat.</p>
+          </div>
+          <a href="/settings/billing" className="rounded-lg bg-[#6C5CE7] px-4 py-2 text-xs font-semibold text-white hover:bg-[#6C5CE7]/90">
+            Upgrade
+          </a>
+        </div>
+      )}
       <div className="mb-8 flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold text-[#1A1A2E]">Documents</h1>
         <label className={`cursor-pointer rounded-lg bg-[#6C5CE7] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6C5CE7]/90 ${uploading ? "opacity-50 pointer-events-none" : ""}`}>

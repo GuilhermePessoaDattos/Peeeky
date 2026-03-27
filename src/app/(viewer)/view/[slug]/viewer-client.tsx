@@ -247,12 +247,12 @@ export function ViewerClient({ signedUrl, documentName, linkId, totalPages, allo
       {/* Badge */}
       <div className="flex justify-center pb-2">
         <a
-          href="https://peeeky.com"
+          href="https://peeeky.com?utm_source=viewer&utm_medium=badge&utm_campaign=viral"
           target="_blank"
           rel="noopener noreferrer"
           className="text-[10px] text-white/20 hover:text-white/40 transition"
         >
-          Secured by Peeeky
+          Secured by Peeeky — Track your documents free &rarr;
         </a>
       </div>
 

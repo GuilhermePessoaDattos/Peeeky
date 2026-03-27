@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordView, recordPageView, updateViewDuration } from "@/modules/tracking";
 import { sendViewNotification } from "@/modules/notifications";
+import { trackRateLimit } from "@/lib/ratelimit";
 
 // Public endpoint — no auth required (viewers are anonymous)
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
+    const { success: rateLimitOk } = await trackRateLimit.limit(ip);
+    if (!rateLimitOk) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+    }
+
     const body = await req.json();
     const { action, linkId, viewId, pageNumber, duration, completionRate, viewerEmail } = body;
 
