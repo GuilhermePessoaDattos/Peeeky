@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useRef, useCallback, use } from "react";
 import Link from "next/link";
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface Field {
   id: string;
@@ -28,15 +33,13 @@ interface SigRequest {
   id: string;
   title: string;
   signerEmail: string;
-  signerName: string | null;
   status: string;
   slug: string;
   signedFileUrl: string | null;
-  message: string | null;
-  completedAt: string | null;
   document: { name: string; pageCount: number };
   fields: Field[];
   signers: Signer[];
+  pdfUrl: string | null;
   completion: {
     signerEmail: string;
     signerName: string | null;
@@ -47,12 +50,19 @@ interface SigRequest {
 }
 
 const fieldTypes = [
-  { type: "SIGNATURE", label: "Signature", icon: "✍️", w: 20, h: 6 },
-  { type: "INITIALS", label: "Initials", icon: "🔤", w: 8, h: 5 },
-  { type: "DATE", label: "Date", icon: "📅", w: 15, h: 4 },
-  { type: "TEXT", label: "Text", icon: "📝", w: 20, h: 4 },
-  { type: "CHECKBOX", label: "Checkbox", icon: "☑️", w: 4, h: 4 },
+  { type: "SIGNATURE", label: "Signature", icon: "✍️", w: 22, h: 6, color: "#6C5CE7" },
+  { type: "INITIALS", label: "Initials", icon: "🔤", w: 10, h: 5, color: "#a78bfa" },
+  { type: "DATE", label: "Date", icon: "📅", w: 16, h: 4, color: "#f59e0b" },
+  { type: "TEXT", label: "Text", icon: "📝", w: 22, h: 4, color: "#10b981" },
+  { type: "CHECKBOX", label: "Checkbox", icon: "☑️", w: 4, h: 4, color: "#6b7280" },
 ];
+
+const statusColor: Record<string, string> = {
+  DRAFT: "bg-gray-100 text-gray-600",
+  PENDING: "bg-yellow-50 text-yellow-700",
+  COMPLETED: "bg-green-50 text-green-700",
+  CANCELLED: "bg-red-50 text-red-600",
+};
 
 export default function SignatureRequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -60,31 +70,46 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeTool, setActiveTool] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState(0);
+  const pdfContainerRef = useRef<HTMLDivElement>(null);
 
-  const fetchRequest = () => {
+  const fetchRequest = useCallback(() => {
     fetch(`/api/esignature/${id}`).then(r => r.json()).then(data => {
       setRequest(data.id ? data : null);
       setLoading(false);
     });
-  };
+  }, [id]);
 
-  useEffect(() => { fetchRequest(); }, [id]);
+  useEffect(() => { fetchRequest(); }, [fetchRequest]);
 
-  const addField = async (type: string) => {
-    const ft = fieldTypes.find(f => f.type === type);
+  const handlePdfClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!activeTool || !request || request.status !== "DRAFT") return;
+
+    const container = pdfContainerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+    const yPct = ((e.clientY - rect.top) / rect.height) * 100;
+
+    const ft = fieldTypes.find(f => f.type === activeTool);
+
     await fetch(`/api/esignature/${id}/fields`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        type,
+        type: activeTool,
         pageNumber: currentPage,
-        x: 30 + Math.random() * 20,
-        y: 40 + Math.random() * 20,
+        x: Math.max(0, Math.min(xPct - (ft?.w || 20) / 2, 100 - (ft?.w || 20))),
+        y: Math.max(0, Math.min(yPct - (ft?.h || 5) / 2, 100 - (ft?.h || 5))),
         width: ft?.w || 20,
         height: ft?.h || 5,
         label: ft?.label,
       }),
     });
+
+    setActiveTool(null);
     fetchRequest();
   };
 
@@ -114,13 +139,6 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
   if (loading) return <div className="py-20 text-center text-sm text-gray-400">Loading...</div>;
   if (!request) return <div className="py-20 text-center text-sm text-gray-400">Not found</div>;
 
-  const statusColor: Record<string, string> = {
-    DRAFT: "bg-gray-100 text-gray-600",
-    PENDING: "bg-yellow-50 text-yellow-700",
-    COMPLETED: "bg-green-50 text-green-700",
-    CANCELLED: "bg-red-50 text-red-600",
-  };
-
   const pageFields = request.fields.filter(f => f.pageNumber === currentPage);
 
   return (
@@ -129,6 +147,7 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
         &larr; Back to eSignature
       </Link>
 
+      {/* Header */}
       <div className="mb-6 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
@@ -138,27 +157,41 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
             </span>
           </div>
           <p className="mt-1 text-sm text-gray-500">
-            {request.document.name} &bull; To: {request.signerEmail}
+            {request.document.name} &bull; {request.signers?.length || 1} signer{(request.signers?.length || 1) > 1 ? "s" : ""}
           </p>
         </div>
-        {request.status === "DRAFT" && (
-          <button
-            onClick={sendRequest}
-            disabled={sending || request.fields.length === 0}
-            className="rounded-lg bg-[#6C5CE7] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#6C5CE7]/90 disabled:opacity-50"
-          >
-            {sending ? "Sending..." : "Send for Signature"}
-          </button>
-        )}
-        {request.status === "PENDING" && (
-          <div className="text-right">
-            <p className="text-xs text-gray-400">Sign link:</p>
-            <code className="text-xs text-[#6C5CE7]">{typeof window !== "undefined" ? window.location.origin : ""}/sign/{request.slug}</code>
-          </div>
-        )}
+        <div className="flex gap-2">
+          {request.status === "COMPLETED" && request.signedFileUrl && (
+            <button
+              onClick={async () => {
+                const res = await fetch(`/api/esignature/${id}/download`);
+                const data = await res.json();
+                if (data.url) window.open(data.url, "_blank");
+              }}
+              className="rounded-lg bg-[#00B894] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#00B894]/90"
+            >
+              Download Signed PDF
+            </button>
+          )}
+          {request.status === "DRAFT" && (
+            <button
+              onClick={sendRequest}
+              disabled={sending || request.fields.length === 0}
+              className="rounded-lg bg-[#6C5CE7] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#6C5CE7]/90 disabled:opacity-50"
+            >
+              {sending ? "Sending..." : "Send for Signature"}
+            </button>
+          )}
+          {request.status === "PENDING" && (
+            <div className="rounded-lg border border-gray-200 px-4 py-2.5">
+              <p className="text-[10px] text-gray-400 mb-0.5">Share this link with signers:</p>
+              <code className="text-xs text-[#6C5CE7]">{typeof window !== "undefined" ? window.location.origin : ""}/sign/{request.slug}</code>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Completed info */}
+      {/* Completion info */}
       {request.completion && (
         <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-5">
           <h3 className="text-sm font-semibold text-green-800 mb-2">&#9989; Signature Completed</h3>
@@ -166,47 +199,26 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
             <div><span className="text-green-600">Signer:</span><br/>{request.completion.signerEmail}</div>
             <div><span className="text-green-600">Method:</span><br/>{request.completion.signatureMethod}</div>
             <div><span className="text-green-600">Signed at:</span><br/>{new Date(request.completion.completedAt).toLocaleString()}</div>
-            <div><span className="text-green-600">Audit hash:</span><br/><code className="text-[10px] break-all">{request.completion.auditHash.slice(0, 16)}...</code></div>
+            <div><span className="text-green-600">Audit hash:</span><br/><code className="text-[10px] break-all">{request.completion.auditHash.slice(0, 20)}...</code></div>
           </div>
-        </div>
-      )}
-
-      {/* Download signed PDF */}
-      {request.status === "COMPLETED" && request.signedFileUrl && (
-        <div className="mb-6">
-          <button
-            onClick={async () => {
-              const res = await fetch(`/api/esignature/${id}/download`);
-              const data = await res.json();
-              if (data.url) window.open(data.url, "_blank");
-            }}
-            className="rounded-lg bg-[#00B894] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#00B894]/90"
-          >
-            Download Signed PDF
-          </button>
         </div>
       )}
 
       {/* Signers */}
       {request.signers && request.signers.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-sm font-semibold text-[#1A1A2E] mb-3">Signers ({request.signers.length})</h3>
-          <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-[#1A1A2E] mb-3">Signers</h3>
+          <div className="flex flex-wrap gap-2">
             {request.signers.map((s) => (
-              <div key={s.id} className="rounded-xl border border-gray-200 bg-white p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-600">
-                    {s.order + 1}
-                  </span>
-                  <div>
-                    <span className="text-sm font-medium text-[#1A1A2E]">{s.name || s.email}</span>
-                    {s.name && <span className="text-xs text-gray-400 ml-2">{s.email}</span>}
-                  </div>
-                </div>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+              <div key={s.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2 flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-[10px] font-bold text-gray-600">
+                  {s.order + 1}
+                </span>
+                <span className="text-xs font-medium">{s.name || s.email}</span>
+                <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
                   s.status === "SIGNED" ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"
                 }`}>
-                  {s.status === "SIGNED" ? `Signed ${s.signedAt ? new Date(s.signedAt).toLocaleDateString() : ""}` : "Pending"}
+                  {s.status === "SIGNED" ? "Signed" : "Pending"}
                 </span>
               </div>
             ))}
@@ -214,45 +226,114 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
         </div>
       )}
 
-      {/* Field placement (DRAFT only) */}
-      {request.status === "DRAFT" && (
+      {/* Visual PDF Editor (DRAFT only) */}
+      {request.status === "DRAFT" && request.pdfUrl && (
         <div className="mb-6">
-          <h3 className="text-sm font-semibold text-[#1A1A2E] mb-3">Add Fields to Page {currentPage}</h3>
-          <div className="flex flex-wrap gap-2 mb-4">
+          {/* Toolbar */}
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-gray-500 mr-2">Place field:</span>
             {fieldTypes.map(ft => (
               <button
                 key={ft.type}
-                onClick={() => addField(ft.type)}
-                className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:border-[#6C5CE7] transition"
+                onClick={() => setActiveTool(activeTool === ft.type ? null : ft.type)}
+                className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
+                  activeTool === ft.type
+                    ? "border-[#6C5CE7] bg-[#6C5CE7]/10 text-[#6C5CE7]"
+                    : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                }`}
               >
                 {ft.icon} {ft.label}
               </button>
             ))}
+            {activeTool && (
+              <span className="text-xs text-[#6C5CE7] animate-pulse ml-2">
+                Click on the PDF to place the {activeTool.toLowerCase()} field
+              </span>
+            )}
           </div>
 
           {/* Page navigation */}
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3">
             <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage <= 1} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs disabled:opacity-30">
               &larr; Prev
             </button>
             <span className="text-xs text-gray-500">
-              Page {currentPage} of {request.document.pageCount || "?"}
+              Page {currentPage} of {numPages || request.document.pageCount || "?"}
             </span>
-            <button onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage >= (request.document.pageCount || 1)} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs disabled:opacity-30">
+            <button onClick={() => setCurrentPage(Math.min(numPages || 999, currentPage + 1))} disabled={currentPage >= numPages} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs disabled:opacity-30">
               Next &rarr;
             </button>
+          </div>
+
+          {/* PDF with field overlays */}
+          <div
+            ref={pdfContainerRef}
+            className={`relative border-2 rounded-xl overflow-hidden inline-block ${
+              activeTool ? "border-[#6C5CE7] cursor-crosshair" : "border-gray-200"
+            }`}
+            onClick={handlePdfClick}
+          >
+            <Document
+              file={request.pdfUrl}
+              onLoadSuccess={({ numPages: n }) => setNumPages(n)}
+              loading={<div className="w-[612px] h-[792px] bg-gray-50 flex items-center justify-center text-sm text-gray-400">Loading PDF...</div>}
+            >
+              <Page
+                pageNumber={currentPage}
+                width={612}
+                renderAnnotationLayer={false}
+                renderTextLayer={false}
+              />
+            </Document>
+
+            {/* Field overlays */}
+            {pageFields.map((f) => {
+              const ft = fieldTypes.find(t => t.type === f.type);
+              return (
+                <div
+                  key={f.id}
+                  className="absolute group"
+                  style={{
+                    left: `${f.x}%`,
+                    top: `${f.y}%`,
+                    width: `${f.width}%`,
+                    height: `${f.height}%`,
+                    border: `2px dashed ${ft?.color || "#6C5CE7"}`,
+                    borderRadius: "6px",
+                    background: `${ft?.color || "#6C5CE7"}15`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    color: ft?.color || "#6C5CE7",
+                    pointerEvents: activeTool ? "none" : "auto",
+                  }}
+                >
+                  <span className="truncate px-1">{ft?.icon} {f.type}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeField(f.id); }}
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    &times;
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Fields list */}
+      {/* Fields table */}
       <div>
         <h3 className="text-sm font-semibold text-[#1A1A2E] mb-3">
-          Signature Fields ({request.fields.length})
+          Fields ({request.fields.length})
         </h3>
         {request.fields.length === 0 ? (
           <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center">
-            <p className="text-sm text-gray-500">No fields added yet. Add signature fields above.</p>
+            <p className="text-sm text-gray-500">
+              {request.status === "DRAFT" ? "Select a field type above and click on the PDF to place it." : "No fields."}
+            </p>
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl border border-gray-200">
@@ -263,29 +344,32 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
                   <th className="px-4 py-3 text-left font-medium text-gray-600">Page</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600">Position</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600">Value</th>
-                  {request.status === "DRAFT" && <th className="px-4 py-3 text-left font-medium text-gray-600">Action</th>}
+                  {request.status === "DRAFT" && <th className="px-4 py-3 text-left font-medium text-gray-600"></th>}
                 </tr>
               </thead>
               <tbody>
-                {request.fields.map((f) => (
-                  <tr key={f.id} className="border-b last:border-0">
-                    <td className="px-4 py-3 font-medium">
-                      {fieldTypes.find(ft => ft.type === f.type)?.icon} {f.type}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">Page {f.pageNumber}</td>
-                    <td className="px-4 py-3 text-gray-400 text-xs font-mono">
-                      ({Math.round(f.x)}%, {Math.round(f.y)}%)
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">
-                      {f.value ? <span className="text-green-600">{f.value.slice(0, 30)}</span> : <span className="text-gray-300">—</span>}
-                    </td>
-                    {request.status === "DRAFT" && (
-                      <td className="px-4 py-3">
-                        <button onClick={() => removeField(f.id)} className="text-xs text-red-500 hover:underline">Remove</button>
+                {request.fields.map((f) => {
+                  const ft = fieldTypes.find(t => t.type === f.type);
+                  return (
+                    <tr key={f.id} className="border-b last:border-0">
+                      <td className="px-4 py-3 font-medium">
+                        <span style={{ color: ft?.color }}>{ft?.icon} {f.type}</span>
                       </td>
-                    )}
-                  </tr>
-                ))}
+                      <td className="px-4 py-3 text-gray-500">Page {f.pageNumber}</td>
+                      <td className="px-4 py-3 text-gray-400 text-xs font-mono">
+                        ({Math.round(f.x)}%, {Math.round(f.y)}%)
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {f.value ? <span className="text-green-600">{f.value.slice(0, 30)}</span> : <span className="text-gray-300">—</span>}
+                      </td>
+                      {request.status === "DRAFT" && (
+                        <td className="px-4 py-3">
+                          <button onClick={() => removeField(f.id)} className="text-xs text-red-500 hover:underline">Remove</button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -30,7 +30,8 @@ export default function SignPage({ params }: { params: Promise<{ slug: string }>
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<"review" | "sign" | "done">("review");
-  const [sigMethod, setSigMethod] = useState<"DRAW" | "TYPE">("TYPE");
+  const [sigMethod, setSigMethod] = useState<"DRAW" | "TYPE" | "UPLOAD">("TYPE");
+  const [uploadedSig, setUploadedSig] = useState<string>("");
   const [typedName, setTypedName] = useState("");
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -120,9 +121,20 @@ export default function SignPage({ params }: { params: Promise<{ slug: string }>
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
+  const handleSigUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setUploadedSig(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const getSignatureImage = (): string => {
     if (sigMethod === "DRAW") {
       return canvasRef.current?.toDataURL("image/png") || "";
+    }
+    if (sigMethod === "UPLOAD") {
+      return uploadedSig;
     }
     // For typed: create a canvas with the text
     const canvas = document.createElement("canvas");
@@ -154,6 +166,11 @@ export default function SignPage({ params }: { params: Promise<{ slug: string }>
 
     if (sigMethod === "TYPE" && !typedName.trim()) {
       alert("Please type your name for the signature");
+      return;
+    }
+
+    if (sigMethod === "UPLOAD" && !uploadedSig) {
+      alert("Please upload a signature image");
       return;
     }
 
@@ -339,6 +356,14 @@ export default function SignPage({ params }: { params: Promise<{ slug: string }>
                 >
                   Draw Signature
                 </button>
+                <button
+                  onClick={() => setSigMethod("UPLOAD")}
+                  className={`flex-1 rounded-xl py-3 text-sm font-semibold transition ${
+                    sigMethod === "UPLOAD" ? "bg-[#6C5CE7] text-white" : "bg-gray-100 text-gray-600"
+                  }`}
+                >
+                  Upload Image
+                </button>
               </div>
 
               {sigMethod === "TYPE" && (
@@ -387,6 +412,32 @@ export default function SignPage({ params }: { params: Promise<{ slug: string }>
                 </div>
               )}
 
+              {sigMethod === "UPLOAD" && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-3">Upload an image of your handwritten signature (PNG, JPG):</p>
+                  <label className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 p-8 cursor-pointer hover:border-[#6C5CE7] hover:bg-[#6C5CE7]/5 transition">
+                    {uploadedSig ? (
+                      <div className="text-center">
+                        <img src={uploadedSig} alt="Signature" className="max-h-24 mb-3 mx-auto" />
+                        <p className="text-xs text-gray-500">Click to replace</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-3xl mb-2">&#128247;</div>
+                        <p className="text-sm font-medium text-gray-600">Click to upload signature image</p>
+                        <p className="text-xs text-gray-400 mt-1">PNG or JPG, max 2MB</p>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg"
+                      className="hidden"
+                      onChange={handleSigUpload}
+                    />
+                  </label>
+                </div>
+              )}
+
               {/* Legal notice */}
               <div className="mt-6 rounded-xl bg-gray-50 p-4">
                 <p className="text-xs text-gray-500 leading-relaxed">
@@ -407,7 +458,7 @@ export default function SignPage({ params }: { params: Promise<{ slug: string }>
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={submitting || (sigMethod === "TYPE" && !typedName.trim())}
+                disabled={submitting || (sigMethod === "TYPE" && !typedName.trim()) || (sigMethod === "UPLOAD" && !uploadedSig)}
                 className="flex-[2] rounded-xl bg-[#6C5CE7] py-4 text-base font-semibold text-white hover:bg-[#6C5CE7]/90 transition disabled:opacity-50"
               >
                 {submitting ? "Processing..." : "Complete Signature"}

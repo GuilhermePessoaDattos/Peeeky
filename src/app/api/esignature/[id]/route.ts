@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/modules/auth/auth";
 import { getSignatureRequest, cancelSignatureRequest } from "@/modules/esignature";
+import { getSignedViewUrl } from "@/lib/r2";
 
 export async function GET(
   req: NextRequest,
@@ -17,7 +18,13 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json(request);
+  // Include signed PDF URL for the editor
+  let pdfUrl = null;
+  if (request.document?.fileUrl) {
+    pdfUrl = await getSignedViewUrl(request.document.fileUrl);
+  }
+
+  return NextResponse.json({ ...request, pdfUrl });
 }
 
 export async function DELETE(
