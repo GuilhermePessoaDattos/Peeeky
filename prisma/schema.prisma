@@ -81,6 +81,7 @@ model Document {
   dataRoomDocs   DataRoomDocument[]
   versions       DocumentVersion[]
   fileRequests   FileRequest[]
+  signatureRequests SignatureRequest[]
 
   @@index([orgId])
 }
@@ -248,6 +249,63 @@ model AuditEvent {
 
   @@index([orgId, createdAt])
   @@index([orgId, resourceType, resourceId])
+}
+
+// ─── eSignature ──────────────────────────────────────────
+
+model SignatureRequest {
+  id          String   @id @default(cuid())
+  documentId  String
+  orgId       String
+  createdById String
+  title       String
+  message     String?
+  status      String   @default("DRAFT") // DRAFT, PENDING, COMPLETED, CANCELLED
+  signerEmail String
+  signerName  String?
+  slug        String   @unique
+  completedAt DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  document Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  fields   SignatureField[]
+  completion SignatureCompletion?
+
+  @@index([orgId])
+  @@index([documentId])
+}
+
+model SignatureField {
+  id                 String   @id @default(cuid())
+  signatureRequestId String
+  type               String   // SIGNATURE, INITIALS, DATE, TEXT, CHECKBOX
+  pageNumber         Int
+  x                  Float    // percentage position (0-100)
+  y                  Float
+  width              Float
+  height             Float
+  label              String?
+  required           Boolean  @default(true)
+  value              String?  // filled by signer
+  createdAt          DateTime @default(now())
+
+  signatureRequest SignatureRequest @relation(fields: [signatureRequestId], references: [id], onDelete: Cascade)
+}
+
+model SignatureCompletion {
+  id                 String   @id @default(cuid())
+  signatureRequestId String   @unique
+  signerEmail        String
+  signerName         String?
+  signerIp           String?
+  signatureImage     String?  // base64 of drawn/typed signature
+  signatureMethod    String   // DRAW, TYPE, UPLOAD
+  completedAt        DateTime @default(now())
+  auditHash          String   // SHA-256 hash of document + fields + timestamp for tamper detection
+
+  signatureRequest SignatureRequest @relation(fields: [signatureRequestId], references: [id], onDelete: Cascade)
 }
 
 // ─── NextAuth Models ────────────────────────────────────
