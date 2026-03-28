@@ -1,9 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Clock } from "lucide-react";
+import { ArrowRight, Clock, FileText, BarChart3, Users } from "lucide-react";
 
 const posts = [
   {
@@ -13,7 +12,8 @@ const posts = [
     readTime: "4 min",
     tags: ["launch", "product"],
     href: "/blog/introducing-peeeky",
-    image: "/images/blog-introducing.png",
+    gradient: "from-[#6C5CE7] to-[#a78bfa]",
+    icon: FileText,
   },
   {
     title: "How Founders Use Peeeky to Track Investor Engagement",
@@ -22,7 +22,8 @@ const posts = [
     readTime: "5 min",
     tags: ["fundraising", "use-case"],
     href: "/blog/investor-engagement",
-    image: "/images/blog-investors.png",
+    gradient: "from-emerald-500 to-teal-400",
+    icon: BarChart3,
   },
   {
     title: "Sales Teams: Know Exactly When to Follow Up",
@@ -31,7 +32,8 @@ const posts = [
     readTime: "3 min",
     tags: ["sales", "use-case"],
     href: "/blog/sales-follow-up",
-    image: "/images/blog-sales.png",
+    gradient: "from-orange-500 to-amber-400",
+    icon: Users,
   },
 ];
 
@@ -72,15 +74,8 @@ export function BlogSection() {
                 href={post.href}
                 className="group relative overflow-hidden rounded-3xl border border-border/60 bg-card shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full"
               >
-                <div className="relative h-48 overflow-hidden">
-                  <Image
-                    src={post.image}
-                    alt={post.title}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    sizes="(max-width: 768px) 100vw, 33vw"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                <div className={`relative h-48 overflow-hidden bg-gradient-to-br ${post.gradient} flex items-center justify-center`}>
+                  <post.icon className="w-16 h-16 text-white/30 transition-transform duration-500 group-hover:scale-110" />
                 </div>
                 <div className="p-6 flex flex-col flex-1">
                   <div className="flex flex-wrap gap-1.5 mb-4">

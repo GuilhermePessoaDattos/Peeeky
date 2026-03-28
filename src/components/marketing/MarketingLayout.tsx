@@ -8,23 +8,18 @@ import { Button } from "@/components/ui/Button";
 
 const navLinks = [
   { name: "Features", href: "/#features" },
+  { name: "Compare", href: "/vs/docsend" },
+  { name: "Use Cases", href: "/for/fundraising" },
   { name: "Pricing", href: "/#pricing" },
-  { name: "Blog", href: "/#blog" },
+  { name: "Blog", href: "/blog" },
   { name: "FAQ", href: "/#faq" },
 ];
 
 function PeeekyLogo() {
   return (
-    <div className="flex items-center gap-2">
-      <svg width="22" height="16" viewBox="0 0 22 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-        <path d="M11 1C7 1 3 4.5 1 8C3 11.5 7 15 11 15C15 15 19 11.5 21 8C19 4.5 15 1 11 1Z" stroke="#6C5CE7" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
-        <circle cx="11" cy="8" r="3" fill="#6C5CE7" />
-        <circle cx="12" cy="7" r="1" fill="white" opacity="0.6" />
-      </svg>
-      <span style={{ fontFamily: "var(--font-jakarta, 'Plus Jakarta Sans', sans-serif)", fontWeight: 800, fontSize: "17px", letterSpacing: "-0.02em", color: "#0a0a0a" }}>
-        P<span style={{ color: "#6C5CE7" }}>eee</span>ky
-      </span>
-    </div>
+    <span style={{ fontFamily: "var(--font-outfit, 'Outfit', sans-serif)", fontWeight: 800, fontSize: "20px", letterSpacing: "-0.03em", color: "#0a0a0a" }}>
+      p<span style={{ color: "#6C5CE7" }}>eee</span>ky
+    </span>
   );
 }
 
