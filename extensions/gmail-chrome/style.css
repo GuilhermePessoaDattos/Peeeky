@@ -1,0 +1,22 @@
+.peeeky-compose-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  margin-left: 8px;
+  border-radius: 18px;
+  border: 1px solid #d2d2d7;
+  background: white;
+  cursor: pointer;
+  font-family: -apple-system, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6C5CE7;
+  transition: all 0.2s ease;
+  vertical-align: middle;
+}
+
+.peeeky-compose-btn:hover {
+  background: rgba(108, 92, 231, 0.08);
+  border-color: #6C5CE7;
+}

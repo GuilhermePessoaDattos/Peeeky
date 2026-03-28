@@ -23,6 +23,19 @@ export async function POST(req: NextRequest) {
       const country = req.headers.get("x-vercel-ip-country") || undefined;
       const city = req.headers.get("x-vercel-ip-city") || undefined;
 
+      // Forward detection: if link has prior views from different email, flag as forwarded
+      let isForwarded = false;
+      if (viewerEmail) {
+        const priorViews = await prisma.view.findMany({
+          where: { linkId, viewerEmail: { not: viewerEmail } },
+          select: { viewerEmail: true },
+          take: 1,
+        });
+        if (priorViews.length > 0 && priorViews[0].viewerEmail) {
+          isForwarded = true;
+        }
+      }
+
       const view = await recordView(linkId, {
         viewerEmail,
         ip,
@@ -31,9 +44,10 @@ export async function POST(req: NextRequest) {
         os: extractOS(ua),
         country,
         city,
+        isForwarded,
       });
 
-      return NextResponse.json({ viewId: view.id });
+      return NextResponse.json({ viewId: view.id, isForwarded });
     }
 
     if (action === "page_view") {

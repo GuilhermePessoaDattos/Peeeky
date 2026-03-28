@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/modules/auth/auth";
-import { getDocument, deleteDocument } from "@/modules/documents";
+import { getDocument, deleteDocument, replaceDocumentFile } from "@/modules/documents";
 import { logAudit } from "@/modules/audit";
+
+export const maxDuration = 60;
 
 export async function GET(
   req: NextRequest,
@@ -26,6 +28,33 @@ export async function GET(
       { error: "Failed to get document" },
       { status: 500 },
     );
+  }
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.orgId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const formData = await req.formData();
+    const file = formData.get("file") as File | null;
+
+    if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    const result = await replaceDocumentFile(session.user.orgId, id, session.user.id, file);
+    logAudit(session.user.orgId, session.user.id, "document.updated", "document", id);
+    return NextResponse.json({ success: true, version: result.version });
+  } catch (error) {
+    console.error("Update document error:", error);
+    return NextResponse.json({ error: "Failed to update document" }, { status: 500 });
   }
 }
 

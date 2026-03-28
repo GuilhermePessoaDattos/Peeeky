@@ -9,6 +9,7 @@ export async function recordView(linkId: string, metadata: {
   country?: string;
   city?: string;
   ip?: string;
+  isForwarded?: boolean;
 }) {
   const view = await prisma.view.create({
     data: {

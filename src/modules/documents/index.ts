@@ -78,6 +78,59 @@ export async function getDocument(orgId: string, documentId: string) {
   });
 }
 
+export async function replaceDocumentFile(
+  orgId: string,
+  documentId: string,
+  userId: string,
+  file: File
+) {
+  const doc = await prisma.document.findFirst({
+    where: { id: documentId, orgId },
+  });
+  if (!doc) throw new Error("Document not found");
+
+  // Save current version
+  const versionCount = await prisma.documentVersion.count({ where: { documentId } });
+  await prisma.documentVersion.create({
+    data: {
+      documentId,
+      fileUrl: doc.fileUrl,
+      version: versionCount + 1,
+      uploadedBy: userId,
+    },
+  });
+
+  // Upload new file
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const key = `${orgId}/${documentId}/${file.name}`;
+  await uploadFile(key, buffer, file.type);
+
+  // Update document record (all existing links now serve the new file)
+  await prisma.document.update({
+    where: { id: documentId },
+    data: {
+      fileUrl: key,
+      status: "READY",
+      updatedAt: new Date(),
+    },
+  });
+
+  // Clear embeddings so AI chat reindexes
+  await prisma.documentEmbedding.deleteMany({ where: { documentId } });
+
+  return { version: versionCount + 2 };
+}
+
+export async function getDocumentVersions(orgId: string, documentId: string) {
+  const doc = await prisma.document.findFirst({ where: { id: documentId, orgId } });
+  if (!doc) throw new Error("Document not found");
+
+  return prisma.documentVersion.findMany({
+    where: { documentId },
+    orderBy: { version: "desc" },
+  });
+}
+
 export async function deleteDocument(orgId: string, documentId: string) {
   const doc = await prisma.document.findFirst({
     where: { id: documentId, orgId },

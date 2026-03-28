@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { width: 320px; font-family: -apple-system, sans-serif; padding: 20px; color: #1d1d1f; }
+    .logo { font-weight: 800; font-size: 18px; margin-bottom: 16px; }
+    .logo .e { color: #6C5CE7; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 11px; font-weight: 600; color: #86868b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .field input { width: 100%; padding: 10px 12px; border: 1px solid #d2d2d7; border-radius: 10px; font-size: 13px; outline: none; }
+    .field input:focus { border-color: #6C5CE7; box-shadow: 0 0 0 3px rgba(108,92,231,0.12); }
+    .btn { width: 100%; padding: 12px; background: #6C5CE7; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn:hover { background: #5a4bd4; }
+    .status { margin-top: 12px; font-size: 12px; color: #86868b; text-align: center; }
+    .status.ok { color: #00B894; }
+    .status.err { color: #E17055; }
+    .links-list { margin-top: 16px; }
+    .link-item { padding: 8px 0; border-top: 1px solid #f0f0f2; display: flex; justify-content: space-between; align-items: center; }
+    .link-item:first-child { border-top: none; }
+    .link-name { font-size: 13px; font-weight: 500; }
+    .link-slug { font-size: 11px; color: #86868b; }
+    .copy-btn { background: none; border: 1px solid #d2d2d7; border-radius: 6px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-weight: 500; }
+    .copy-btn:hover { background: #f5f5f7; }
+  </style>
+</head>
+<body>
+  <div class="logo">p<span class="e">eee</span>ky</div>
+
+  <div id="login-view">
+    <div class="field">
+      <label>API Key</label>
+      <input type="password" id="api-key" placeholder="Paste your Peeeky API key">
+    </div>
+    <button class="btn" id="save-key">Connect</button>
+    <div id="login-status" class="status"></div>
+  </div>
+
+  <div id="links-view" style="display:none;">
+    <p style="font-size:13px;color:#86868b;margin-bottom:8px;">Your recent links:</p>
+    <div class="links-list" id="links-list"></div>
+    <div id="links-status" class="status"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

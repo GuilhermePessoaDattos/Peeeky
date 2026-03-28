@@ -79,8 +79,23 @@ model Document {
   links          Link[]
   embeddings     DocumentEmbedding[]
   dataRoomDocs   DataRoomDocument[]
+  versions       DocumentVersion[]
+  fileRequests   FileRequest[]
 
   @@index([orgId])
+}
+
+model DocumentVersion {
+  id         String   @id @default(cuid())
+  documentId String
+  fileUrl    String
+  version    Int
+  uploadedBy String
+  createdAt  DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
 }
 
 // ─── Data Rooms ─────────────────────────────────────────
@@ -140,14 +155,29 @@ model Link {
   allowDownload   Boolean   @default(false)
   enableWatermark Boolean   @default(false)
   enableAIChat    Boolean   @default(false)
+  requireNDA      Boolean   @default(false)
+  ndaText         String?
   expiresAt       DateTime?
   maxViews        Int?
   isActive        Boolean   @default(true)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  views    View[]
+  document      Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  views         View[]
+  ndaAcceptances NdaAcceptance[]
+}
+
+model NdaAcceptance {
+  id        String   @id @default(cuid())
+  linkId    String
+  email     String
+  ip        String?
+  acceptedAt DateTime @default(now())
+
+  link Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([linkId])
 }
 
 model View {
@@ -163,6 +193,7 @@ model View {
   ip             String?
   duration       Int      @default(0)
   completionRate Float    @default(0)
+  isForwarded    Boolean  @default(false)
   createdAt      DateTime @default(now())
 
   link      Link       @relation(fields: [linkId], references: [id], onDelete: Cascade)
@@ -254,6 +285,22 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// ─── File Requests ────────────────────────────────────────
+
+model FileRequest {
+  id          String   @id @default(cuid())
+  documentId  String
+  uploaderEmail String
+  fileName    String
+  fileUrl     String
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt   DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
 }
 
 // ─── Referrals ────────────────────────────────────────────
