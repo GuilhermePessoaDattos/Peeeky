@@ -24,7 +24,7 @@ export async function POST(
       const signUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://peeeky.com"}/sign/${request.slug}`;
 
       await resend.emails.send({
-        from: "Peeeky <onboarding@resend.dev>",
+        from: "Peeeky <notifications@peeeky.com>",
         to: request.signerEmail,
         subject: `Signature requested: ${request.title}`,
         html: `

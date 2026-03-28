@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 
       try {
         await resend.emails.send({
-          from: "Peeeky <onboarding@resend.dev>",
+          from: "Peeeky <notifications@peeeky.com>",
           to: signer.email,
           subject: `Reminder: Signature needed — ${request.title}`,
           html: `

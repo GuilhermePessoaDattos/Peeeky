@@ -103,7 +103,7 @@ export async function sendViewNotification(viewId: string) {
 
   try {
     await resend.emails.send({
-      from: "Peeeky <onboarding@resend.dev>",
+      from: "Peeeky <notifications@peeeky.com>",
       to: owner.email,
       subject,
       html,
@@ -181,7 +181,7 @@ export async function sendWelcomeEmail(email: string, name: string | null) {
 
   try {
     await resend.emails.send({
-      from: "Peeeky <onboarding@resend.dev>",
+      from: "Peeeky <notifications@peeeky.com>",
       to: email,
       subject: "Welcome to Peeeky — track your first document",
       html,

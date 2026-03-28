@@ -44,7 +44,7 @@ export async function inviteMember(orgId: string, email: string, role: "ADMIN" |
   // Send invite email
   try {
     await resend.emails.send({
-      from: "Peeeky <onboarding@resend.dev>",
+      from: "Peeeky <notifications@peeeky.com>",
       to: email,
       subject: `You've been invited to ${org?.name || "a workspace"} on Peeeky`,
       html: `

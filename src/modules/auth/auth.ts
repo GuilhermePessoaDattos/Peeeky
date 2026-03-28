@@ -26,7 +26,7 @@ export const {
     }),
     Resend({
       apiKey: process.env.RESEND_API_KEY!,
-      from: "Peeeky <onboarding@resend.dev>",
+      from: "Peeeky <notifications@peeeky.com>",
     }),
   ],
   events: {

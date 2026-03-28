@@ -366,7 +366,7 @@ async function sendCompletionNotification(
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://peeeky.com";
 
   await resend.emails.send({
-    from: "Peeeky <onboarding@resend.dev>",
+    from: "Peeeky <notifications@peeeky.com>",
     to: ownerEmail,
     subject: `✅ Signature completed: ${title}`,
     html: `
