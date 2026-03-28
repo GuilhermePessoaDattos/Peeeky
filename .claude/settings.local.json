@@ -47,7 +47,9 @@
       "Bash(curl:*)",
       "Bash(while read:*)",
       "Bash(do sed:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(xargs grep:*)",
+      "Bash(find 'C:\\\\Users\\\\guilh\\\\OneDrive\\\\Área de Trabalho\\\\claude\\\\projetos\\\\MicroSaaS\\\\src\\\\app\\\\sign' -name *.tsx)"
     ]
   },
   "enableAllProjectMcpServers": true,

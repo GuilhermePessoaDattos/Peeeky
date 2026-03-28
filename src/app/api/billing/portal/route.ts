@@ -9,7 +9,7 @@ export async function POST() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://peeeky.com";
     const url = await createPortalSession(session.user.orgId, appUrl);
 
     return NextResponse.json({ url });
