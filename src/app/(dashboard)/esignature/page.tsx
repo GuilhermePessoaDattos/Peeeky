@@ -19,6 +19,10 @@ export default function ESignaturePage() {
   const [requests, setRequests] = useState<SigRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [showNDA, setShowNDA] = useState(false);
+  const [ndaEmail, setNdaEmail] = useState("");
+  const [ndaDocId, setNdaDocId] = useState("");
+  const [ndaSending, setNdaSending] = useState(false);
   const [docs, setDocs] = useState<{ id: string; name: string }[]>([]);
   const [form, setForm] = useState({ documentId: "", title: "", message: "" });
   const [signerInputs, setSignerInputs] = useState([{ email: "", name: "" }]);
@@ -64,6 +68,55 @@ export default function ESignaturePage() {
     }
   };
 
+  const sendOneClickNDA = async () => {
+    if (!ndaDocId || !ndaEmail) return;
+    setNdaSending(true);
+    try {
+      // Create request with pre-configured NDA fields
+      const res = await fetch("/api/esignature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentId: ndaDocId,
+          title: "Non-Disclosure Agreement",
+          message: "Please review and sign this Non-Disclosure Agreement before accessing the document.",
+          signers: [{ email: ndaEmail }],
+        }),
+      });
+
+      if (!res.ok) { alert("Failed to create NDA request"); return; }
+      const data = await res.json();
+
+      // Add standard NDA fields: signature on page 1 + date
+      await fetch(`/api/esignature/${data.id}/fields`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "SIGNATURE", pageNumber: 1, x: 10, y: 80, width: 25, height: 7, label: "Signature" }),
+      });
+      await fetch(`/api/esignature/${data.id}/fields`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "DATE", pageNumber: 1, x: 45, y: 82, width: 18, height: 4, label: "Date" }),
+      });
+      await fetch(`/api/esignature/${data.id}/fields`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "TEXT", pageNumber: 1, x: 10, y: 72, width: 30, height: 4, label: "Full Name" }),
+      });
+
+      // Auto-send
+      await fetch(`/api/esignature/${data.id}/send`, { method: "POST" });
+
+      setShowNDA(false);
+      setNdaEmail("");
+      setNdaDocId("");
+      // Refresh list
+      fetch("/api/esignature").then(r => r.json()).then(d => setRequests(Array.isArray(d) ? d : []));
+    } finally {
+      setNdaSending(false);
+    }
+  };
+
   const statusColor: Record<string, string> = {
     DRAFT: "bg-gray-100 text-gray-600",
     PENDING: "bg-yellow-50 text-yellow-700",
@@ -80,13 +133,69 @@ export default function ESignaturePage() {
           <h1 className="font-display text-2xl font-bold text-[#1A1A2E]">eSignature</h1>
           <p className="text-sm text-gray-500 mt-1">Request signatures on your documents.</p>
         </div>
-        <button
-          onClick={() => { setShowCreate(true); loadDocs(); }}
-          className="rounded-lg bg-[#6C5CE7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#6C5CE7]/90"
-        >
-          + New Request
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setShowNDA(true); loadDocs(); }}
+            className="rounded-lg border border-[#6C5CE7] px-4 py-2 text-sm font-semibold text-[#6C5CE7] hover:bg-[#6C5CE7]/5"
+          >
+            &#9997;&#65039; One-Click NDA
+          </button>
+          <button
+            onClick={() => { setShowCreate(true); loadDocs(); }}
+            className="rounded-lg bg-[#6C5CE7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#6C5CE7]/90"
+          >
+            + New Request
+          </button>
+        </div>
       </div>
+
+      {/* One-Click NDA */}
+      {showNDA && (
+        <div className="mb-8 rounded-xl border-2 border-[#6C5CE7]/20 bg-[#6C5CE7]/5 p-6 space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">&#9997;&#65039;</span>
+            <h2 className="text-sm font-semibold text-[#1A1A2E]">One-Click NDA</h2>
+          </div>
+          <p className="text-xs text-gray-500">
+            Select a document and enter the signer&apos;s email. We&apos;ll auto-create signature fields (signature + date + name) and send the request immediately.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">NDA Document</label>
+              <select
+                value={ndaDocId}
+                onChange={(e) => setNdaDocId(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#6C5CE7]"
+              >
+                <option value="">Select NDA document</option>
+                {docs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Signer Email</label>
+              <input
+                type="email"
+                value={ndaEmail}
+                onChange={(e) => setNdaEmail(e.target.value)}
+                placeholder="signer@company.com"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#6C5CE7]"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={sendOneClickNDA}
+              disabled={ndaSending || !ndaDocId || !ndaEmail}
+              className="rounded-lg bg-[#6C5CE7] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {ndaSending ? "Sending NDA..." : "Send NDA Now"}
+            </button>
+            <button onClick={() => setShowNDA(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Create form */}
       {showCreate && (

@@ -72,6 +72,8 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [numPages, setNumPages] = useState(0);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const pdfContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchRequest = useCallback(() => {
@@ -121,6 +123,57 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
     });
     fetchRequest();
   };
+
+  const handleFieldDragStart = (e: React.MouseEvent, fieldId: string) => {
+    if (activeTool) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const container = pdfContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const field = request?.fields.find(f => f.id === fieldId);
+    if (!field) return;
+    const fieldXPx = (field.x / 100) * rect.width;
+    const fieldYPx = (field.y / 100) * rect.height;
+    setDragOffset({
+      x: e.clientX - rect.left - fieldXPx,
+      y: e.clientY - rect.top - fieldYPx,
+    });
+    setDragging(fieldId);
+  };
+
+  const handleDragMove = useCallback((e: React.MouseEvent) => {
+    if (!dragging || !pdfContainerRef.current) return;
+    e.preventDefault();
+    const rect = pdfContainerRef.current.getBoundingClientRect();
+    const field = request?.fields.find(f => f.id === dragging);
+    if (!field) return;
+    const newX = ((e.clientX - rect.left - dragOffset.x) / rect.width) * 100;
+    const newY = ((e.clientY - rect.top - dragOffset.y) / rect.height) * 100;
+    // Update locally for smooth visual feedback
+    const el = document.getElementById(`field-${dragging}`);
+    if (el) {
+      el.style.left = `${Math.max(0, Math.min(newX, 100 - field.width))}%`;
+      el.style.top = `${Math.max(0, Math.min(newY, 100 - field.height))}%`;
+    }
+  }, [dragging, dragOffset, request?.fields]);
+
+  const handleDragEnd = useCallback(async (e: React.MouseEvent) => {
+    if (!dragging || !pdfContainerRef.current) return;
+    const rect = pdfContainerRef.current.getBoundingClientRect();
+    const field = request?.fields.find(f => f.id === dragging);
+    if (!field) { setDragging(null); return; }
+    const newX = Math.max(0, Math.min(((e.clientX - rect.left - dragOffset.x) / rect.width) * 100, 100 - field.width));
+    const newY = Math.max(0, Math.min(((e.clientY - rect.top - dragOffset.y) / rect.height) * 100, 100 - field.height));
+    setDragging(null);
+    // Save to backend
+    await fetch(`/api/esignature/${id}/fields`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fieldId: dragging, x: newX, y: newY }),
+    });
+    fetchRequest();
+  }, [dragging, dragOffset, request?.fields, id, fetchRequest]);
 
   const sendRequest = async () => {
     setSending(true);
@@ -268,10 +321,13 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
           {/* PDF with field overlays */}
           <div
             ref={pdfContainerRef}
-            className={`relative border-2 rounded-xl overflow-hidden inline-block ${
-              activeTool ? "border-[#6C5CE7] cursor-crosshair" : "border-gray-200"
+            className={`relative border-2 rounded-xl overflow-hidden inline-block select-none ${
+              activeTool ? "border-[#6C5CE7] cursor-crosshair" : dragging ? "border-blue-400 cursor-grabbing" : "border-gray-200"
             }`}
             onClick={handlePdfClick}
+            onMouseMove={handleDragMove}
+            onMouseUp={handleDragEnd}
+            onMouseLeave={handleDragEnd}
           >
             <Document
               file={request.pdfUrl}
@@ -292,13 +348,14 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
               return (
                 <div
                   key={f.id}
-                  className="absolute group"
+                  id={`field-${f.id}`}
+                  className={`absolute group ${dragging === f.id ? "opacity-80 z-50" : ""}`}
                   style={{
                     left: `${f.x}%`,
                     top: `${f.y}%`,
                     width: `${f.width}%`,
                     height: `${f.height}%`,
-                    border: `2px dashed ${ft?.color || "#6C5CE7"}`,
+                    border: `2px ${dragging === f.id ? "solid" : "dashed"} ${ft?.color || "#6C5CE7"}`,
                     borderRadius: "6px",
                     background: `${ft?.color || "#6C5CE7"}15`,
                     display: "flex",
@@ -307,10 +364,14 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
                     fontSize: "10px",
                     fontWeight: 600,
                     color: ft?.color || "#6C5CE7",
+                    cursor: activeTool ? "crosshair" : dragging === f.id ? "grabbing" : "grab",
                     pointerEvents: activeTool ? "none" : "auto",
+                    boxShadow: dragging === f.id ? "0 4px 12px rgba(0,0,0,0.15)" : "none",
+                    transition: dragging === f.id ? "none" : "box-shadow 0.2s",
                   }}
+                  onMouseDown={(e) => handleFieldDragStart(e, f.id)}
                 >
-                  <span className="truncate px-1">{ft?.icon} {f.type}</span>
+                  <span className="truncate px-1 pointer-events-none">{ft?.icon} {f.type}</span>
                   <button
                     onClick={(e) => { e.stopPropagation(); removeField(f.id); }}
                     className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
