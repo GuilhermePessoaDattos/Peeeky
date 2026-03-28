@@ -3,16 +3,19 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
-const navLinks = [
-  { name: "Features", href: "/#features" },
-  { name: "Compare", href: "/vs/docsend" },
-  { name: "Use Cases", href: "/for/fundraising" },
-  { name: "Pricing", href: "/#pricing" },
-  { name: "Blog", href: "/blog" },
-  { name: "FAQ", href: "/#faq" },
+const compareLinks = [
+  { name: "vs DocSend", href: "/vs/docsend" },
+  { name: "vs Google Drive", href: "/vs/google-drive" },
+  { name: "vs WeTransfer", href: "/vs/wetransfer" },
+];
+
+const useCaseLinks = [
+  { name: "Fundraising", href: "/for/fundraising" },
+  { name: "Sales Teams", href: "/for/sales" },
+  { name: "M&A", href: "/for/mna" },
 ];
 
 function PeeekyLogo() {
@@ -57,16 +60,52 @@ function Navbar() {
             <Link href="/"><PeeekyLogo /></Link>
 
             <div className="hidden md:flex items-center gap-8">
-              <div className="flex items-center gap-6 bg-white/70 backdrop-blur-md px-6 py-2 rounded-full border border-[#e5e7eb]">
-                {navLinks.map((link) => (
-                  <a
-                    key={link.name}
-                    href={link.href}
-                    className="text-sm font-medium text-[#6b7280] hover:text-[#0a0a0b] transition-colors"
-                  >
-                    {link.name}
-                  </a>
-                ))}
+              <div className="flex items-center gap-1 bg-white/70 backdrop-blur-md px-4 py-2 rounded-full border border-[#e5e7eb]">
+                <a href="/#features" className="text-sm font-medium text-[#6b7280] hover:text-[#0a0a0b] transition-colors px-3 py-1">
+                  Features
+                </a>
+
+                {/* Compare dropdown */}
+                <div className="relative group">
+                  <button className="flex items-center gap-1 text-sm font-medium text-[#6b7280] hover:text-[#0a0a0b] transition-colors px-3 py-1">
+                    Compare <ChevronDown className="w-3.5 h-3.5 transition-transform group-hover:rotate-180" />
+                  </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <div className="bg-white rounded-2xl border border-[#e5e7eb] shadow-xl p-2 min-w-[180px]">
+                      {compareLinks.map((link) => (
+                        <Link key={link.name} href={link.href} className="block px-4 py-2.5 text-sm text-[#6b7280] hover:text-[#0a0a0b] hover:bg-[#f3f4f6] rounded-xl transition-colors">
+                          {link.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Use Cases dropdown */}
+                <div className="relative group">
+                  <button className="flex items-center gap-1 text-sm font-medium text-[#6b7280] hover:text-[#0a0a0b] transition-colors px-3 py-1">
+                    Use Cases <ChevronDown className="w-3.5 h-3.5 transition-transform group-hover:rotate-180" />
+                  </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <div className="bg-white rounded-2xl border border-[#e5e7eb] shadow-xl p-2 min-w-[180px]">
+                      {useCaseLinks.map((link) => (
+                        <Link key={link.name} href={link.href} className="block px-4 py-2.5 text-sm text-[#6b7280] hover:text-[#0a0a0b] hover:bg-[#f3f4f6] rounded-xl transition-colors">
+                          {link.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <a href="/#pricing" className="text-sm font-medium text-[#6b7280] hover:text-[#0a0a0b] transition-colors px-3 py-1">
+                  Pricing
+                </a>
+                <a href="/blog" className="text-sm font-medium text-[#6b7280] hover:text-[#0a0a0b] transition-colors px-3 py-1">
+                  Blog
+                </a>
+                <a href="/#faq" className="text-sm font-medium text-[#6b7280] hover:text-[#0a0a0b] transition-colors px-3 py-1">
+                  FAQ
+                </a>
               </div>
             </div>
 
@@ -109,17 +148,35 @@ function Navbar() {
               backdropFilter: "blur(20px)",
             }}
           >
-            <div className="flex flex-col gap-6 text-center text-lg font-medium">
-              {navLinks.map((link) => (
-                <a
-                  key={link.name}
-                  href={link.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="py-2 text-[#374151] hover:text-[#0a0a0b]"
-                >
-                  {link.name}
-                </a>
-              ))}
+            <div className="flex flex-col gap-4 text-center text-lg font-medium">
+              <a href="/#features" onClick={() => setIsMobileMenuOpen(false)} className="py-2 text-[#374151]">Features</a>
+
+              <div>
+                <p className="py-2 text-[#374151] font-semibold">Compare</p>
+                <div className="flex flex-col gap-1 mt-1">
+                  {compareLinks.map((link) => (
+                    <Link key={link.name} href={link.href} onClick={() => setIsMobileMenuOpen(false)} className="py-1.5 text-base text-[#6b7280]">
+                      {link.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="py-2 text-[#374151] font-semibold">Use Cases</p>
+                <div className="flex flex-col gap-1 mt-1">
+                  {useCaseLinks.map((link) => (
+                    <Link key={link.name} href={link.href} onClick={() => setIsMobileMenuOpen(false)} className="py-1.5 text-base text-[#6b7280]">
+                      {link.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <a href="/#pricing" onClick={() => setIsMobileMenuOpen(false)} className="py-2 text-[#374151]">Pricing</a>
+              <a href="/blog" onClick={() => setIsMobileMenuOpen(false)} className="py-2 text-[#374151]">Blog</a>
+              <a href="/#faq" onClick={() => setIsMobileMenuOpen(false)} className="py-2 text-[#374151]">FAQ</a>
+
               <hr className="border-[#e5e7eb]" />
               <Link
                 href="/login"
