@@ -3,44 +3,64 @@
 <head>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { width: 320px; font-family: -apple-system, sans-serif; padding: 20px; color: #1d1d1f; }
-    .logo { font-weight: 800; font-size: 18px; margin-bottom: 16px; }
+    body { width: 340px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #0a0a0b; }
+    .header { padding: 16px 20px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-weight: 800; font-size: 17px; letter-spacing: -0.02em; }
     .logo .e { color: #6C5CE7; }
-    .field { margin-bottom: 12px; }
-    .field label { display: block; font-size: 11px; font-weight: 600; color: #86868b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
-    .field input { width: 100%; padding: 10px 12px; border: 1px solid #d2d2d7; border-radius: 10px; font-size: 13px; outline: none; }
-    .field input:focus { border-color: #6C5CE7; box-shadow: 0 0 0 3px rgba(108,92,231,0.12); }
-    .btn { width: 100%; padding: 12px; background: #6C5CE7; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .header-link { font-size: 11px; color: #6C5CE7; text-decoration: none; font-weight: 500; }
+    .section { padding: 16px 20px; }
+    .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; margin-bottom: 12px; }
+    .auth-box { padding: 20px; text-align: center; }
+    .auth-box p { font-size: 13px; color: #6b7280; margin-bottom: 12px; line-height: 1.5; }
+    .auth-input { width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 13px; outline: none; margin-bottom: 8px; }
+    .auth-input:focus { border-color: #6C5CE7; box-shadow: 0 0 0 3px rgba(108,92,231,0.1); }
+    .btn { width: 100%; padding: 10px; background: #6C5CE7; color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
     .btn:hover { background: #5a4bd4; }
-    .status { margin-top: 12px; font-size: 12px; color: #86868b; text-align: center; }
+    .btn-outline { background: transparent; color: #6C5CE7; border: 1px solid #e5e7eb; }
+    .btn-outline:hover { background: #f9fafb; }
+    .status { margin-top: 8px; font-size: 12px; text-align: center; }
     .status.ok { color: #00B894; }
     .status.err { color: #E17055; }
-    .links-list { margin-top: 16px; }
-    .link-item { padding: 8px 0; border-top: 1px solid #f0f0f2; display: flex; justify-content: space-between; align-items: center; }
-    .link-item:first-child { border-top: none; }
-    .link-name { font-size: 13px; font-weight: 500; }
-    .link-slug { font-size: 11px; color: #86868b; }
-    .copy-btn { background: none; border: 1px solid #d2d2d7; border-radius: 6px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-weight: 500; }
-    .copy-btn:hover { background: #f5f5f7; }
+    .doc-item { padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+    .doc-item:last-child { border-bottom: none; }
+    .doc-name { font-size: 13px; font-weight: 600; color: #0a0a0b; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .link-row { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+    .link-url { font-size: 11px; color: #9ca3af; font-family: monospace; }
+    .copy-btn { background: none; border: 1px solid #e5e7eb; border-radius: 6px; padding: 3px 10px; font-size: 11px; cursor: pointer; font-weight: 500; color: #0a0a0b; }
+    .copy-btn:hover { background: #f3f4f6; border-color: #6C5CE7; color: #6C5CE7; }
+    .empty { padding: 24px 20px; text-align: center; color: #9ca3af; font-size: 13px; }
+    .disconnect { padding: 12px 20px; border-top: 1px solid #f3f4f6; }
   </style>
 </head>
 <body>
-  <div class="logo">p<span class="e">eee</span>ky</div>
+  <div class="header">
+    <div class="logo">p<span class="e">eee</span>ky</div>
+    <a class="header-link" href="https://peeeky.com/documents" target="_blank">Dashboard ↗</a>
+  </div>
 
-  <div id="login-view">
-    <div class="field">
-      <label>API Key</label>
-      <input type="password" id="api-key" placeholder="Paste your Peeeky API key">
+  <div id="auth-view" style="display:none;">
+    <div class="auth-box">
+      <p>Connect your Peeeky account to insert tracked links in Gmail.</p>
+      <input class="auth-input" type="text" id="api-key" placeholder="Your referral code (as API key)">
+      <button class="btn" id="connect-btn">Connect</button>
+      <div id="auth-status" class="status"></div>
+      <p style="margin-top:12px;font-size:11px;color:#9ca3af;">
+        Find your code at <a href="https://peeeky.com/settings/referrals" target="_blank" style="color:#6C5CE7;">Settings → Referrals</a>
+      </p>
     </div>
-    <button class="btn" id="save-key">Connect</button>
-    <div id="login-status" class="status"></div>
   </div>
 
-  <div id="links-view" style="display:none;">
-    <p style="font-size:13px;color:#86868b;margin-bottom:8px;">Your recent links:</p>
-    <div class="links-list" id="links-list"></div>
-    <div id="links-status" class="status"></div>
+  <div id="docs-view" style="display:none;">
+    <div class="section">
+      <div class="section-title">Your documents</div>
+      <div id="docs-list"></div>
+    </div>
+    <div class="disconnect">
+      <button class="btn btn-outline" id="disconnect-btn" style="font-size:12px;padding:8px;">Disconnect</button>
+    </div>
   </div>
+
+  <div id="loading" class="empty">Loading...</div>
 
   <script src="popup.js"></script>
 </body>

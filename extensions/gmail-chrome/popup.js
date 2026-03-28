@@ -4,78 +4,123 @@ document.addEventListener("DOMContentLoaded", async () => {
   const { apiKey } = await chrome.storage.local.get("apiKey");
 
   if (apiKey) {
-    showLinksView(apiKey);
+    loadDocuments(apiKey);
+  } else {
+    showAuthView();
   }
 
-  document.getElementById("save-key").addEventListener("click", async () => {
+  // Connect button
+  document.getElementById("connect-btn").addEventListener("click", async () => {
     const key = document.getElementById("api-key").value.trim();
     if (!key) return;
 
-    const status = document.getElementById("login-status");
+    const status = document.getElementById("auth-status");
     status.textContent = "Connecting...";
     status.className = "status";
 
     try {
-      const res = await fetch(`${API_BASE}/api/documents`, {
-        headers: { Authorization: `Bearer ${key}` },
+      const res = await fetch(`${API_BASE}/api/extension`, {
+        headers: { "x-peeeky-key": key },
       });
 
       if (res.ok) {
         await chrome.storage.local.set({ apiKey: key });
         status.textContent = "Connected!";
         status.className = "status ok";
-        setTimeout(() => showLinksView(key), 500);
+        setTimeout(() => loadDocuments(key), 500);
       } else {
-        status.textContent = "Invalid API key";
+        status.textContent = "Invalid key. Make sure you're using your referral code.";
         status.className = "status err";
       }
     } catch {
-      status.textContent = "Connection failed";
+      status.textContent = "Connection failed. Check your internet.";
       status.className = "status err";
     }
   });
+
+  // Disconnect button
+  document.getElementById("disconnect-btn").addEventListener("click", async () => {
+    await chrome.storage.local.remove("apiKey");
+    showAuthView();
+  });
 });
 
-async function showLinksView(apiKey) {
-  document.getElementById("login-view").style.display = "none";
-  document.getElementById("links-view").style.display = "block";
+function showAuthView() {
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("auth-view").style.display = "block";
+  document.getElementById("docs-view").style.display = "none";
+}
+
+async function loadDocuments(apiKey) {
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("auth-view").style.display = "none";
+  document.getElementById("docs-view").style.display = "none";
 
   try {
-    const res = await fetch(`${API_BASE}/api/documents`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+    const res = await fetch(`${API_BASE}/api/extension`, {
+      headers: { "x-peeeky-key": apiKey },
     });
 
-    if (!res.ok) throw new Error("Failed");
-    const docs = await res.json();
+    if (!res.ok) {
+      showAuthView();
+      return;
+    }
 
-    const list = document.getElementById("links-list");
+    const data = await res.json();
+    const docs = data.documents || [];
+
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("docs-view").style.display = "block";
+
+    const list = document.getElementById("docs-list");
     list.innerHTML = "";
 
-    for (const doc of docs.slice(0, 8)) {
-      if (!doc.links?.length) continue;
+    if (docs.length === 0) {
+      list.innerHTML = '<div class="empty">No documents yet. <a href="https://peeeky.com/documents" target="_blank" style="color:#6C5CE7;">Upload one</a></div>';
+      return;
+    }
+
+    for (const doc of docs) {
+      if (!doc.links || doc.links.length === 0) continue;
+
       for (const link of doc.links) {
         const item = document.createElement("div");
-        item.className = "link-item";
+        item.className = "doc-item";
         item.innerHTML = `
-          <div>
-            <div class="link-name">${doc.name}</div>
-            <div class="link-slug">${API_BASE}/view/${link.slug}</div>
+          <div class="doc-name">${escapeHtml(doc.name)}</div>
+          <div class="link-row">
+            <span class="link-url">/view/${link.slug}</span>
+            <span class="link-views">${link.views} view${link.views !== 1 ? "s" : ""}</span>
+            <button class="copy-btn" data-url="${link.url}">Copy link</button>
           </div>
-          <button class="copy-btn" data-url="${API_BASE}/view/${link.slug}">Copy</button>
         `;
         list.appendChild(item);
       }
     }
 
+    // Copy handlers
     list.querySelectorAll(".copy-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         navigator.clipboard.writeText(btn.dataset.url);
         btn.textContent = "Copied!";
-        setTimeout(() => (btn.textContent = "Copy"), 1500);
+        btn.style.background = "#00B894";
+        btn.style.color = "white";
+        btn.style.borderColor = "#00B894";
+        setTimeout(() => {
+          btn.textContent = "Copy link";
+          btn.style.background = "";
+          btn.style.color = "";
+          btn.style.borderColor = "";
+        }, 1500);
       });
     });
   } catch {
-    document.getElementById("links-status").textContent = "Failed to load links";
-    document.getElementById("links-status").className = "status err";
+    showAuthView();
   }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
 }

@@ -2,22 +2,31 @@
   "manifest_version": 3,
   "name": "Peeeky for Gmail",
   "version": "1.0.0",
-  "description": "Share tracked Peeeky links directly from Gmail compose",
+  "description": "Insert tracked Peeeky document links directly into Gmail compose. Know who reads your attachments.",
   "permissions": ["activeTab", "storage"],
-  "host_permissions": ["https://mail.google.com/*"],
+  "host_permissions": [
+    "https://mail.google.com/*",
+    "https://peeeky.com/*",
+    "https://www.peeeky.com/*"
+  ],
   "content_scripts": [
     {
       "matches": ["https://mail.google.com/*"],
       "js": ["content.js"],
-      "css": ["style.css"]
+      "css": ["style.css"],
+      "run_at": "document_idle"
     }
   ],
   "icons": {
-    "48": "icon48.png",
-    "128": "icon128.png"
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   },
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "icon48.png"
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+    }
   }
 }
