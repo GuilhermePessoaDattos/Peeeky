@@ -25,6 +25,10 @@ export default function SettingsPage() {
           <h2 className="font-display text-lg font-semibold text-[#1A1A2E]">Referrals</h2>
           <p className="mt-1 text-sm text-gray-500">Earn 20% commission by referring customers.</p>
         </Link>
+        <Link href="/settings/domains" className="rounded-xl border border-gray-200 bg-white p-6 transition hover:shadow-md">
+          <h2 className="font-display text-lg font-semibold text-[#1A1A2E]">Custom Domains</h2>
+          <p className="mt-1 text-sm text-gray-500">Use your own domain for sharing links.</p>
+        </Link>
       </div>
     </div>
   );

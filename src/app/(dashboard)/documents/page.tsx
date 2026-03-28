@@ -18,6 +18,10 @@ export default function DocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [upgradeNeeded, setUpgradeNeeded] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const [importName, setImportName] = useState("");
+  const [importing, setImporting] = useState(false);
 
   const fetchDocuments = useCallback(async () => {
     try {
@@ -99,17 +103,89 @@ export default function DocumentsPage() {
       )}
       <div className="mb-8 flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold text-[#1A1A2E]">Documents</h1>
-        <label className={`cursor-pointer rounded-lg bg-[#6C5CE7] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6C5CE7]/90 ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
-          {uploading ? "Uploading..." : "+ Upload Document"}
-          <input
-            type="file"
-            accept=".pdf,.pptx"
-            onChange={handleUpload}
-            className="hidden"
-            disabled={uploading}
-          />
-        </label>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowImport(!showImport)}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
+          >
+            Import URL
+          </button>
+          <label className={`cursor-pointer rounded-lg bg-[#6C5CE7] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6C5CE7]/90 ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+            {uploading ? "Uploading..." : "+ Upload Document"}
+            <input
+              type="file"
+              accept=".pdf,.pptx"
+              onChange={handleUpload}
+              className="hidden"
+              disabled={uploading}
+            />
+          </label>
+        </div>
       </div>
+
+      {/* Import from URL */}
+      {showImport && (
+        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
+          <h3 className="text-sm font-semibold text-[#1A1A2E] mb-3">Import from URL</h3>
+          <p className="text-xs text-gray-500 mb-3">
+            Paste a direct link to a PDF (Google Drive export link, Dropbox, or any public URL).
+          </p>
+          <div className="space-y-2">
+            <input
+              type="url"
+              value={importUrl}
+              onChange={(e) => setImportUrl(e.target.value)}
+              placeholder="https://drive.google.com/uc?export=download&id=..."
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#6C5CE7]"
+            />
+            <input
+              type="text"
+              value={importName}
+              onChange={(e) => setImportName(e.target.value)}
+              placeholder="File name (e.g. pitch-deck.pdf)"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#6C5CE7]"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  if (!importUrl || !importName) return;
+                  setImporting(true);
+                  try {
+                    const res = await fetch("/api/documents/import-url", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ url: importUrl, fileName: importName }),
+                    });
+                    if (res.ok) {
+                      setImportUrl("");
+                      setImportName("");
+                      setShowImport(false);
+                      fetchDocuments();
+                    } else {
+                      const data = await res.json();
+                      alert(data.error || "Import failed");
+                    }
+                  } catch {
+                    alert("Import failed");
+                  } finally {
+                    setImporting(false);
+                  }
+                }}
+                disabled={importing || !importUrl || !importName}
+                className="rounded-lg bg-[#6C5CE7] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {importing ? "Importing..." : "Import"}
+              </button>
+              <button
+                onClick={() => setShowImport(false)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {documents.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 py-20">

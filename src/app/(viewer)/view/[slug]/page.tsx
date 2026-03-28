@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { ViewerClient } from "./viewer-client";
 import { AccessGate } from "./access-gate";
+import { NdaGate } from "./nda-gate";
 
 export default async function ViewerPage({
   params,
@@ -56,6 +57,18 @@ export default async function ViewerPage({
         slug={slug}
         requirePassword={!!link.password}
         requireEmail={link.requireEmail}
+        documentName={link.document.name}
+      />
+    );
+  }
+
+  // If NDA required, show NDA gate
+  if (link.requireNDA) {
+    return (
+      <NdaGate
+        linkId={link.id}
+        slug={slug}
+        ndaText={link.ndaText || "By clicking 'I Agree', you acknowledge that the contents of this document are confidential and agree not to share, distribute, or disclose any information contained herein to any third party without prior written consent."}
         documentName={link.document.name}
       />
     );

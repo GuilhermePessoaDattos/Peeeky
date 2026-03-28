@@ -14,6 +14,8 @@ interface LinkItem {
   allowDownload: boolean;
   enableWatermark: boolean;
   enableAIChat: boolean;
+  requireNDA: boolean;
+  ndaText: string | null;
   expiresAt: string | null;
   maxViews: number | null;
   createdAt: string;
@@ -86,6 +88,8 @@ function LinkSettings({
   const [allowDownload, setAllowDownload] = useState(link.allowDownload);
   const [enableWatermark, setEnableWatermark] = useState(link.enableWatermark);
   const [enableAIChat, setEnableAIChat] = useState(link.enableAIChat);
+  const [requireNDA, setRequireNDA] = useState(link.requireNDA || false);
+  const [ndaText, setNdaText] = useState(link.ndaText || "");
   const [expiresAt, setExpiresAt] = useState(
     link.expiresAt ? link.expiresAt.slice(0, 16) : ""
   );
@@ -215,7 +219,43 @@ function LinkSettings({
           />
           AI Chat
         </label>
+
+        <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={requireNDA}
+            onChange={(e) => {
+              setRequireNDA(e.target.checked);
+              save("requireNDA", e.target.checked);
+            }}
+            className="rounded border-gray-300 text-[#6C5CE7] focus:ring-[#6C5CE7]"
+          />
+          Require NDA
+        </label>
       </div>
+
+      {/* NDA Text */}
+      {requireNDA && (
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-gray-600">
+            NDA / Agreement Text
+          </label>
+          <textarea
+            value={ndaText}
+            onChange={(e) => setNdaText(e.target.value)}
+            placeholder="Enter the NDA or agreement text viewers must accept..."
+            rows={3}
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs outline-none focus:border-[#6C5CE7] resize-none"
+          />
+          <button
+            onClick={() => save("ndaText", ndaText || null)}
+            disabled={saving}
+            className="mt-2 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+          >
+            Save NDA Text
+          </button>
+        </div>
+      )}
 
       {/* Expiry & Max Views */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -457,8 +497,11 @@ export default function DocumentDetailPage({
   const [upgradeNeeded, setUpgradeNeeded] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [expandedLink, setExpandedLink] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"links" | "analytics">("links");
+  const [activeTab, setActiveTab] = useState<"links" | "analytics" | "versions" | "files">("links");
   const [viewingNow, setViewingNow] = useState(0);
+  const [versions, setVersions] = useState<{ id: string; version: number; createdAt: string }[]>([]);
+  const [fileRequests, setFileRequests] = useState<{ id: string; uploaderEmail: string; fileName: string; status: string; createdAt: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   const fetchDocument = useCallback(async () => {
     try {
@@ -488,6 +531,49 @@ export default function DocumentDetailPage({
     const interval = setInterval(fetchViewers, 10000);
     return () => clearInterval(interval);
   }, [id]);
+
+  // Fetch versions when tab is active
+  useEffect(() => {
+    if (activeTab !== "versions") return;
+    fetch(`/api/documents/${id}/versions`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setVersions(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [activeTab, id]);
+
+  // Fetch file requests when tab is active
+  useEffect(() => {
+    if (activeTab !== "files") return;
+    fetch(`/api/documents/${id}/file-requests`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setFileRequests(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [activeTab, id]);
+
+  const handleFileReplace = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      await fetch(`/api/documents/${id}`, { method: "PATCH", body: formData });
+      fetchDocument();
+    } catch (err) {
+      console.error("Upload failed:", err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileRequestAction = async (requestId: string, status: string) => {
+    await fetch(`/api/documents/${id}/file-requests`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestId, status }),
+    });
+    setFileRequests((prev) => prev.map((r) => r.id === requestId ? { ...r, status } : r));
+  };
 
   const createLink = async () => {
     setCreating(true);
@@ -621,34 +707,38 @@ export default function DocumentDetailPage({
         </div>
       </div>
 
+      {/* Action buttons */}
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <label className={`rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 cursor-pointer transition ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+          {uploading ? "Uploading..." : "Update File"}
+          <input type="file" accept=".pdf,.pptx" className="hidden" onChange={handleFileReplace} />
+        </label>
+        <a
+          href={`/api/documents/${id}/export`}
+          className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 transition"
+        >
+          Export CSV
+        </a>
+      </div>
+
       {/* Tabs */}
       <div className="mb-6 flex items-center gap-0 border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab("links")}
-          className={`relative px-4 py-3 text-sm font-medium transition ${
-            activeTab === "links"
-              ? "text-[#6C5CE7]"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Links
-          {activeTab === "links" && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6C5CE7] rounded-full" />
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab("analytics")}
-          className={`relative px-4 py-3 text-sm font-medium transition ${
-            activeTab === "analytics"
-              ? "text-[#6C5CE7]"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Analytics
-          {activeTab === "analytics" && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6C5CE7] rounded-full" />
-          )}
-        </button>
+        {(["links", "analytics", "versions", "files"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`relative px-4 py-3 text-sm font-medium transition capitalize ${
+              activeTab === tab
+                ? "text-[#6C5CE7]"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            {tab === "files" ? "File Requests" : tab}
+            {activeTab === tab && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6C5CE7] rounded-full" />
+            )}
+          </button>
+        ))}
       </div>
 
       {/* Tab Content */}
@@ -758,6 +848,91 @@ export default function DocumentDetailPage({
       )}
 
       {activeTab === "analytics" && <AnalyticsTab documentId={id} pageCount={doc.pageCount} />}
+
+      {/* Versions Tab */}
+      {activeTab === "versions" && (
+        <div>
+          <p className="mb-4 text-sm text-gray-500">
+            Upload a new file to create a new version. All existing links will automatically serve the latest version.
+          </p>
+          {versions.length === 0 ? (
+            <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center">
+              <p className="text-sm text-gray-500">No previous versions. The current file is the original.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="rounded-xl border border-[#6C5CE7]/20 bg-[#6C5CE7]/5 p-4 flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-semibold text-[#6C5CE7]">Current Version (v{versions.length + 1})</span>
+                  <p className="text-xs text-gray-500 mt-0.5">Latest file — served to all links</p>
+                </div>
+                <span className="rounded-full bg-[#00B894]/10 px-2.5 py-1 text-[10px] font-semibold text-[#00B894]">Active</span>
+              </div>
+              {versions.map((v) => (
+                <div key={v.id} className="rounded-xl border border-gray-200 bg-white p-4 flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Version {v.version}</span>
+                    <p className="text-xs text-gray-400 mt-0.5">{new Date(v.createdAt).toLocaleString()}</p>
+                  </div>
+                  <span className="text-xs text-gray-400">Archived</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* File Requests Tab */}
+      {activeTab === "files" && (
+        <div>
+          <p className="mb-4 text-sm text-gray-500">
+            Files uploaded by viewers in response to this document.
+          </p>
+          {fileRequests.length === 0 ? (
+            <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center">
+              <p className="text-sm text-gray-500">No file requests received yet.</p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-gray-200">
+              <table className="w-full text-sm">
+                <thead className="border-b bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium text-gray-600">File</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-600">From</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-600">Date</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-600">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fileRequests.map((fr) => (
+                    <tr key={fr.id} className="border-b last:border-0">
+                      <td className="px-4 py-3 font-medium">{fr.fileName}</td>
+                      <td className="px-4 py-3 text-gray-500">{fr.uploaderEmail}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                          fr.status === "APPROVED" ? "bg-green-50 text-green-700" :
+                          fr.status === "REJECTED" ? "bg-red-50 text-red-700" :
+                          "bg-yellow-50 text-yellow-700"
+                        }`}>{fr.status}</span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-400">{new Date(fr.createdAt).toLocaleDateString()}</td>
+                      <td className="px-4 py-3">
+                        {fr.status === "PENDING" && (
+                          <div className="flex gap-2">
+                            <button onClick={() => handleFileRequestAction(fr.id, "APPROVED")} className="text-xs font-medium text-[#00B894] hover:underline">Approve</button>
+                            <button onClick={() => handleFileRequestAction(fr.id, "REJECTED")} className="text-xs font-medium text-[#E17055] hover:underline">Reject</button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
