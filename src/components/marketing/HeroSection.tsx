@@ -210,7 +210,7 @@ export function HeroSection() {
               className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] text-[#0a0a0b] mb-6"
             >
               Share documents.{" "}
-              <span className="text-[#6C5CE7]">Know who reads them.</span>
+              <span className="text-[#6C5CE7]">Let AI decode the interest.</span>
             </motion.h1>
 
             <motion.p
