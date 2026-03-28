@@ -19,17 +19,23 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { documentId, title, message, signerEmail, signerName, expiresAt } = body;
+  const { documentId, title, message, signerEmail, signerName, signers, expiresAt } = body;
 
-  if (!documentId || !title || !signerEmail) {
-    return NextResponse.json({ error: "documentId, title, and signerEmail required" }, { status: 400 });
+  // Support both single signer (backward compat) and multiple signers
+  const signerList = signers && Array.isArray(signers) && signers.length > 0
+    ? signers
+    : signerEmail
+      ? [{ email: signerEmail, name: signerName }]
+      : [];
+
+  if (!documentId || !title || signerList.length === 0) {
+    return NextResponse.json({ error: "documentId, title, and at least one signer required" }, { status: 400 });
   }
 
   const request = await createSignatureRequest(session.user.orgId, session.user.id, documentId, {
     title,
     message,
-    signerEmail,
-    signerName,
+    signers: signerList,
     expiresAt,
   });
 

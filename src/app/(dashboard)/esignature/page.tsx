@@ -20,7 +20,8 @@ export default function ESignaturePage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [docs, setDocs] = useState<{ id: string; name: string }[]>([]);
-  const [form, setForm] = useState({ documentId: "", title: "", signerEmail: "", signerName: "", message: "" });
+  const [form, setForm] = useState({ documentId: "", title: "", message: "" });
+  const [signerInputs, setSignerInputs] = useState([{ email: "", name: "" }]);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -36,14 +37,23 @@ export default function ESignaturePage() {
     });
   };
 
+  const addSigner = () => setSignerInputs([...signerInputs, { email: "", name: "" }]);
+  const removeSigner = (i: number) => setSignerInputs(signerInputs.filter((_, idx) => idx !== i));
+  const updateSigner = (i: number, field: string, value: string) => {
+    const updated = [...signerInputs];
+    (updated[i] as any)[field] = value;
+    setSignerInputs(updated);
+  };
+
   const create = async () => {
-    if (!form.documentId || !form.title || !form.signerEmail) return;
+    const validSigners = signerInputs.filter(s => s.email);
+    if (!form.documentId || !form.title || validSigners.length === 0) return;
     setCreating(true);
     try {
       const res = await fetch("/api/esignature", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, signers: validSigners }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -103,25 +113,34 @@ export default function ESignaturePage() {
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#6C5CE7]"
               />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Signer Email</label>
-              <input
-                type="email"
-                value={form.signerEmail}
-                onChange={(e) => setForm({ ...form, signerEmail: e.target.value })}
-                placeholder="signer@company.com"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#6C5CE7]"
-              />
+          </div>
+
+          {/* Signers */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-medium text-gray-600">Signers</label>
+              <button onClick={addSigner} className="text-xs font-medium text-[#6C5CE7] hover:underline">+ Add signer</button>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Signer Name (optional)</label>
-              <input
-                value={form.signerName}
-                onChange={(e) => setForm({ ...form, signerName: e.target.value })}
-                placeholder="John Doe"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#6C5CE7]"
-              />
-            </div>
+            {signerInputs.map((s, i) => (
+              <div key={i} className="flex gap-2 mb-2">
+                <input
+                  type="email"
+                  value={s.email}
+                  onChange={(e) => updateSigner(i, "email", e.target.value)}
+                  placeholder={`Signer ${i + 1} email`}
+                  className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#6C5CE7]"
+                />
+                <input
+                  value={s.name}
+                  onChange={(e) => updateSigner(i, "name", e.target.value)}
+                  placeholder="Name (optional)"
+                  className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#6C5CE7]"
+                />
+                {signerInputs.length > 1 && (
+                  <button onClick={() => removeSigner(i)} className="text-xs text-red-500 hover:underline px-2">Remove</button>
+                )}
+              </div>
+            ))}
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Message (optional)</label>

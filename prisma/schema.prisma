@@ -254,27 +254,47 @@ model AuditEvent {
 // ─── eSignature ──────────────────────────────────────────
 
 model SignatureRequest {
-  id          String   @id @default(cuid())
-  documentId  String
-  orgId       String
-  createdById String
-  title       String
-  message     String?
-  status      String   @default("DRAFT") // DRAFT, PENDING, COMPLETED, CANCELLED
-  signerEmail String
-  signerName  String?
-  slug        String   @unique
-  completedAt DateTime?
-  expiresAt   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  documentId    String
+  orgId         String
+  createdById   String
+  title         String
+  message       String?
+  status        String   @default("DRAFT") // DRAFT, PENDING, COMPLETED, CANCELLED
+  signerEmail   String   // primary signer (backward compat)
+  signerName    String?
+  slug          String   @unique
+  signedFileUrl String?  // URL to PDF with signatures burned in
+  completedAt   DateTime?
+  expiresAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  document Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  fields   SignatureField[]
+  document   Document              @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  fields     SignatureField[]
   completion SignatureCompletion?
+  signers    SignatureSigner[]
 
   @@index([orgId])
   @@index([documentId])
+}
+
+model SignatureSigner {
+  id                 String   @id @default(cuid())
+  signatureRequestId String
+  email              String
+  name               String?
+  order              Int      @default(0)
+  status             String   @default("PENDING") // PENDING, SIGNED
+  signedAt           DateTime?
+  signatureImage     String?
+  signatureMethod    String?
+  signerIp           String?
+  createdAt          DateTime @default(now())
+
+  signatureRequest SignatureRequest @relation(fields: [signatureRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([signatureRequestId, email])
 }
 
 model SignatureField {

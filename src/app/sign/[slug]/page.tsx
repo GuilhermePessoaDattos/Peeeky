@@ -82,6 +82,36 @@ export default function SignPage({ params }: { params: Promise<{ slug: string }>
 
   const endDraw = () => setIsDrawing(false);
 
+  // Touch events for mobile
+  const startDrawTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    setIsDrawing(true);
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    ctx.beginPath();
+    ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+  };
+
+  const drawTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#0a0a0b";
+    ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    ctx.stroke();
+  };
+
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -346,6 +376,9 @@ export default function SignPage({ params }: { params: Promise<{ slug: string }>
                       onMouseMove={draw}
                       onMouseUp={endDraw}
                       onMouseLeave={endDraw}
+                      onTouchStart={startDrawTouch}
+                      onTouchMove={drawTouch}
+                      onTouchEnd={endDraw}
                     />
                   </div>
                   <button onClick={clearCanvas} className="mt-2 text-xs text-gray-500 hover:text-[#6C5CE7]">

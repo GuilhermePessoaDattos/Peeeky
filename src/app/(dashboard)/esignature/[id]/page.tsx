@@ -15,6 +15,15 @@ interface Field {
   value: string | null;
 }
 
+interface Signer {
+  id: string;
+  email: string;
+  name: string | null;
+  order: number;
+  status: string;
+  signedAt: string | null;
+}
+
 interface SigRequest {
   id: string;
   title: string;
@@ -22,10 +31,12 @@ interface SigRequest {
   signerName: string | null;
   status: string;
   slug: string;
+  signedFileUrl: string | null;
   message: string | null;
   completedAt: string | null;
   document: { name: string; pageCount: number };
   fields: Field[];
+  signers: Signer[];
   completion: {
     signerEmail: string;
     signerName: string | null;
@@ -156,6 +167,49 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
             <div><span className="text-green-600">Method:</span><br/>{request.completion.signatureMethod}</div>
             <div><span className="text-green-600">Signed at:</span><br/>{new Date(request.completion.completedAt).toLocaleString()}</div>
             <div><span className="text-green-600">Audit hash:</span><br/><code className="text-[10px] break-all">{request.completion.auditHash.slice(0, 16)}...</code></div>
+          </div>
+        </div>
+      )}
+
+      {/* Download signed PDF */}
+      {request.status === "COMPLETED" && request.signedFileUrl && (
+        <div className="mb-6">
+          <button
+            onClick={async () => {
+              const res = await fetch(`/api/esignature/${id}/download`);
+              const data = await res.json();
+              if (data.url) window.open(data.url, "_blank");
+            }}
+            className="rounded-lg bg-[#00B894] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#00B894]/90"
+          >
+            Download Signed PDF
+          </button>
+        </div>
+      )}
+
+      {/* Signers */}
+      {request.signers && request.signers.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-[#1A1A2E] mb-3">Signers ({request.signers.length})</h3>
+          <div className="space-y-2">
+            {request.signers.map((s) => (
+              <div key={s.id} className="rounded-xl border border-gray-200 bg-white p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-600">
+                    {s.order + 1}
+                  </span>
+                  <div>
+                    <span className="text-sm font-medium text-[#1A1A2E]">{s.name || s.email}</span>
+                    {s.name && <span className="text-xs text-gray-400 ml-2">{s.email}</span>}
+                  </div>
+                </div>
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                  s.status === "SIGNED" ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"
+                }`}>
+                  {s.status === "SIGNED" ? `Signed ${s.signedAt ? new Date(s.signedAt).toLocaleDateString() : ""}` : "Pending"}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
