@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Implement all technical pieces needed to execute the GTM plan — AppSumo integration, open-source SDK/viewer repos, content pipeline, outbound automation agents, and analytics reporting.
+**Goal:** Implement all technical pieces needed to execute the GTM plan — AppSumo integration, open-source SDK/viewer repos, content pipeline, autonomous cloud agents, admin GTM dashboard with weekly calendar, and analytics reporting.
 
-**Architecture:** 5 independent workstreams that can be parallelized: (1) AppSumo redeem system in the existing Next.js app, (2) peeeky-js SDK as standalone npm package, (3) peeeky-viewer as standalone React component, (4) agent prompts and scheduled triggers for content/outbound/community, (5) analytics dashboard for weekly reporting. Each workstream produces deployable artifacts.
+**Architecture:** 8 independent workstreams: (1) AppSumo redeem system, (2) peeeky-js SDK, (3) peeeky-viewer component, (4) agent prompts and scheduled triggers, (5) onboarding emails, (6) retargeting pixel, (7) **GTM Admin Dashboard** with weekly calendar/checklist and agent management, (8) **Cloud Agent Orchestration** via Vercel Crons + API routes (agents run autonomously without local machine). Each workstream produces deployable artifacts.
 
-**Tech Stack:** Next.js 15, Prisma, Stripe, Resend, R2, TypeScript, Claude Code agents, npm packages.
+**Tech Stack:** Next.js 15, Prisma, Stripe, Resend, R2, TypeScript, Vercel Crons, Claude Code Remote Triggers, npm packages.
 
 ---
 
@@ -2335,15 +2335,1412 @@ git commit -m "feat: add Google Tag Manager pixel for retargeting"
 
 ---
 
-## Summary: Execution Order
+## Workstream G: GTM Admin Dashboard (Priority 1 — Week 2-3)
+
+### Task G1: GTM database schema — activities, agents, weekly goals
+
+**Files:**
+- Modify: `prisma/schema.prisma`
+
+- [ ] **Step 1: Add GTM models to Prisma schema**
+
+Add to `prisma/schema.prisma`:
+
+```prisma
+model GtmWeek {
+  id          String        @id @default(cuid())
+  weekStart   DateTime      // Monday of the week
+  weekNumber  Int           // 1-52
+  goals       String?       // JSON: weekly targets from the GTM plan
+  notes       String?
+  activities  GtmActivity[]
+  createdAt   DateTime      @default(now())
+
+  @@unique([weekStart])
+  @@index([weekStart])
+}
+
+model GtmActivity {
+  id          String   @id @default(cuid())
+  weekId      String
+  week        GtmWeek  @relation(fields: [weekId], references: [id])
+  title       String
+  category    String   // "content" | "social" | "community" | "outbound" | "github" | "ads" | "appsumo" | "other"
+  status      String   @default("pending") // "pending" | "in_progress" | "done" | "skipped"
+  agentId     String?  // which agent owns this
+  priority    Int      @default(2) // 1=high, 2=medium, 3=low
+  dueDate     DateTime?
+  output      String?  // link to draft file, PR, or result
+  notes       String?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([weekId])
+  @@index([category])
+  @@index([status])
+}
+
+model GtmAgent {
+  id           String          @id @default(cuid())
+  name         String          @unique // "content-writer", "social-manager", etc.
+  displayName  String          // "Content Writer"
+  description  String
+  schedule     String          // cron expression
+  status       String          @default("active") // "active" | "paused" | "error"
+  lastRunAt    DateTime?
+  lastRunStatus String?        // "success" | "error" | "timeout"
+  lastRunOutput String?        // summary of last execution
+  runsTotal    Int             @default(0)
+  runsSuccess  Int             @default(0)
+  runsFailed   Int             @default(0)
+  config       String?         // JSON: agent-specific config (e.g., email count, platforms)
+  runs         GtmAgentRun[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model GtmAgentRun {
+  id          String   @id @default(cuid())
+  agentId     String
+  agent       GtmAgent @relation(fields: [agentId], references: [id])
+  status      String   // "running" | "success" | "error" | "timeout"
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  duration    Int?     // seconds
+  output      String?  // summary
+  error       String?
+  itemsCreated Int     @default(0) // drafts generated, emails sent, etc.
+
+  @@index([agentId])
+  @@index([startedAt])
+}
+```
+
+- [ ] **Step 2: Run migration**
+
+Run: `npx prisma migrate dev --name add-gtm-dashboard-models`
+Expected: Migration succeeds, 4 new tables created.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add prisma/schema.prisma
+git commit -m "feat: GTM dashboard schema — weeks, activities, agents, runs"
+```
+
+---
+
+### Task G2: Seed GTM agents and initial 12-week calendar
+
+**Files:**
+- Create: `scripts/seed-gtm.ts`
+
+- [ ] **Step 1: Create seed script**
+
+Create `scripts/seed-gtm.ts`:
+
+```typescript
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+const AGENTS = [
+  {
+    name: "content-writer",
+    displayName: "Content Writer",
+    description: "Writes 2 SEO blog posts per week as Alex Moreira",
+    schedule: "0 10 * * 0", // Sunday 10:00 UTC
+  },
+  {
+    name: "social-manager",
+    displayName: "Social Manager",
+    description: "Generates 5 LinkedIn + 5 Twitter posts per week as Alex",
+    schedule: "0 11 * * 0", // Sunday 11:00 UTC
+  },
+  {
+    name: "community-rep",
+    displayName: "Community Rep",
+    description: "Monitors Reddit, IH, HN and drafts 3-5 responses daily",
+    schedule: "0 14 * * *", // Daily 14:00 UTC
+  },
+  {
+    name: "outbound-sales",
+    displayName: "Outbound Sales",
+    description: "Researches 25 leads/day and drafts personalized cold emails",
+    schedule: "0 13 * * 1-5", // Weekdays 13:00 UTC
+  },
+  {
+    name: "github-maintainer",
+    displayName: "GitHub Maintainer",
+    description: "Triages issues and reviews PRs on open-source repos",
+    schedule: "0 9 * * *", // Daily 09:00 UTC
+  },
+  {
+    name: "analytics-reporter",
+    displayName: "Analytics Reporter",
+    description: "Generates weekly metrics report every Monday",
+    schedule: "0 8 * * 1", // Monday 08:00 UTC
+  },
+];
+
+// Weekly activities template based on GTM plan timeline
+const WEEKLY_TEMPLATES: Record<number, Array<{ title: string; category: string; priority: number }>> = {
+  1: [
+    { title: "Create AppSumo seller account", category: "appsumo", priority: 1 },
+    { title: "Implement AppSumo redeem API", category: "appsumo", priority: 1 },
+    { title: "Create Alex Moreira LinkedIn profile", category: "social", priority: 1 },
+    { title: "Create @peeeky Twitter/X account", category: "social", priority: 1 },
+    { title: "Configure alex@peeeky.com email alias", category: "outbound", priority: 1 },
+    { title: "Deploy peeeky-js SDK to npm", category: "github", priority: 2 },
+    { title: "Install Google Tag Manager pixel", category: "ads", priority: 2 },
+    { title: "Register sitemap on Google Search Console", category: "content", priority: 2 },
+    { title: "Submit to BetaList and AlternativeTo", category: "content", priority: 3 },
+  ],
+  2: [
+    { title: "Submit AppSumo deal for review", category: "appsumo", priority: 1 },
+    { title: "Deploy @peeeky/viewer to npm", category: "github", priority: 1 },
+    { title: "Write 2 blog posts (SEO)", category: "content", priority: 1 },
+    { title: "Generate 5 LinkedIn posts as Alex", category: "social", priority: 1 },
+    { title: "Send first 25 cold emails as Alex", category: "outbound", priority: 1 },
+    { title: "Post Show HN for peeeky-viewer", category: "community", priority: 2 },
+    { title: "Submit to awesome-react list", category: "github", priority: 3 },
+  ],
+  3: [
+    { title: "AppSumo deal goes live (monitor)", category: "appsumo", priority: 1 },
+    { title: "Write 2 blog posts (SEO)", category: "content", priority: 1 },
+    { title: "Generate 5 LinkedIn posts as Alex", category: "social", priority: 1 },
+    { title: "Send 125 cold emails (25/day)", category: "outbound", priority: 1 },
+    { title: "Respond to 15+ community threads", category: "community", priority: 2 },
+    { title: "Prepare Product Hunt launch assets", category: "content", priority: 2 },
+  ],
+  4: [
+    { title: "Product Hunt launch", category: "content", priority: 1 },
+    { title: "Respond to ALL PH comments", category: "community", priority: 1 },
+    { title: "Write 2 blog posts (SEO)", category: "content", priority: 1 },
+    { title: "Send 125 cold emails (25/day)", category: "outbound", priority: 1 },
+    { title: "First AppSumo reviews — request from buyers", category: "appsumo", priority: 2 },
+    { title: "Submit to SaaSHub, StartupStash", category: "content", priority: 3 },
+  ],
+  5: [
+    { title: "Write 2 blog posts (SEO)", category: "content", priority: 1 },
+    { title: "Generate 5 LinkedIn posts", category: "social", priority: 1 },
+    { title: "Send 125 cold emails", category: "outbound", priority: 1 },
+    { title: "Launch referral program email blast", category: "outbound", priority: 2 },
+    { title: "Respond to community threads", category: "community", priority: 2 },
+  ],
+  6: [
+    { title: "Write 2 blog posts (SEO)", category: "content", priority: 1 },
+    { title: "Send 125 cold emails", category: "outbound", priority: 1 },
+    { title: "Request G2/Capterra reviews from AppSumo users", category: "content", priority: 1 },
+    { title: "Create first case study from AppSumo user", category: "content", priority: 2 },
+    { title: "Evaluate Google Ads launch (have enough social proof?)", category: "ads", priority: 2 },
+  ],
+  7: [
+    { title: "Launch Google Ads (competitor keywords)", category: "ads", priority: 1 },
+    { title: "Write 2 blog posts", category: "content", priority: 1 },
+    { title: "Send 125 cold emails", category: "outbound", priority: 1 },
+    { title: "Activate referral program in-app", category: "other", priority: 2 },
+  ],
+  8: [
+    { title: "Write 2 blog posts", category: "content", priority: 1 },
+    { title: "Send 125 cold emails", category: "outbound", priority: 1 },
+    { title: "Analyze Google Ads performance (first month)", category: "ads", priority: 1 },
+    { title: "Create 2 more case studies", category: "content", priority: 2 },
+    { title: "Onboarding email sequence optimization", category: "outbound", priority: 3 },
+  ],
+  9: [
+    { title: "Write 2 blog posts", category: "content", priority: 1 },
+    { title: "Send 100 cold emails", category: "outbound", priority: 1 },
+    { title: "Evaluate LinkedIn Ads launch", category: "ads", priority: 1 },
+    { title: "Enterprise outbound: M&A advisors", category: "outbound", priority: 1 },
+    { title: "Screen-only webinar on YouTube", category: "content", priority: 2 },
+  ],
+  10: [
+    { title: "Launch LinkedIn Ads", category: "ads", priority: 1 },
+    { title: "Write 2 blog posts", category: "content", priority: 1 },
+    { title: "Enterprise outbound: investment bankers", category: "outbound", priority: 1 },
+    { title: "Partnership outreach: accelerators", category: "outbound", priority: 2 },
+  ],
+  11: [
+    { title: "Write 2 blog posts", category: "content", priority: 1 },
+    { title: "Optimize funnel based on 8 months of data", category: "other", priority: 1 },
+    { title: "Scale top 2 channels, cut bottom 2", category: "ads", priority: 1 },
+    { title: "Submit Chrome Extension to Web Store", category: "other", priority: 2 },
+    { title: "Zapier integration listing", category: "other", priority: 3 },
+  ],
+  12: [
+    { title: "Write 2 blog posts", category: "content", priority: 1 },
+    { title: "Launch annual plans with discount", category: "other", priority: 1 },
+    { title: "Upsell existing base (free→pro, pro→biz)", category: "outbound", priority: 1 },
+    { title: "Double down on best channels", category: "ads", priority: 1 },
+    { title: "Review and hit R$20K/month target", category: "other", priority: 1 },
+  ],
+};
+
+async function main() {
+  // Seed agents
+  for (const agent of AGENTS) {
+    await prisma.gtmAgent.upsert({
+      where: { name: agent.name },
+      update: agent,
+      create: agent,
+    });
+  }
+  console.log(`Seeded ${AGENTS.length} agents`);
+
+  // Seed 12 weeks starting from next Monday
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
+  const startMonday = new Date(today);
+  startMonday.setDate(today.getDate() + daysUntilMonday);
+  startMonday.setHours(0, 0, 0, 0);
+
+  for (let w = 1; w <= 12; w++) {
+    const weekStart = new Date(startMonday);
+    weekStart.setDate(startMonday.getDate() + (w - 1) * 7);
+
+    const week = await prisma.gtmWeek.upsert({
+      where: { weekStart },
+      update: {},
+      create: {
+        weekStart,
+        weekNumber: w,
+        goals: JSON.stringify({
+          week: w,
+          focus: w <= 3 ? "Foundation" : w <= 6 ? "Traction" : w <= 9 ? "Growth" : "Scale",
+        }),
+      },
+    });
+
+    const template = WEEKLY_TEMPLATES[w] || [];
+    for (const activity of template) {
+      await prisma.gtmActivity.create({
+        data: {
+          weekId: week.id,
+          title: activity.title,
+          category: activity.category,
+          priority: activity.priority,
+        },
+      });
+    }
+
+    console.log(`Week ${w}: ${template.length} activities`);
+  }
+
+  console.log("Done! 12-week GTM calendar seeded.");
+}
+
+main()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());
+```
+
+- [ ] **Step 2: Run seed**
+
+Run: `npx tsx scripts/seed-gtm.ts`
+Expected: 6 agents + 12 weeks of activities seeded.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add scripts/seed-gtm.ts
+git commit -m "feat: seed script for GTM agents and 12-week activity calendar"
+```
+
+---
+
+### Task G3: GTM API endpoints
+
+**Files:**
+- Create: `src/app/api/admin/gtm/stats/route.ts`
+- Create: `src/app/api/admin/gtm/weeks/route.ts`
+- Create: `src/app/api/admin/gtm/activities/[id]/route.ts`
+- Create: `src/app/api/admin/gtm/agents/route.ts`
+- Create: `src/app/api/admin/gtm/agents/[id]/route.ts`
+- Create: `src/app/api/admin/gtm/agents/[id]/trigger/route.ts`
+
+- [ ] **Step 1: Create GTM stats endpoint**
+
+Create `src/app/api/admin/gtm/stats/route.ts`:
+
+```typescript
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export async function GET() {
+  const now = new Date();
+  const currentWeekStart = getMonday(now);
+
+  const [
+    totalActivities,
+    completedActivities,
+    pendingActivities,
+    agents,
+    currentWeek,
+    recentRuns,
+  ] = await Promise.all([
+    prisma.gtmActivity.count(),
+    prisma.gtmActivity.count({ where: { status: "done" } }),
+    prisma.gtmActivity.count({ where: { status: "pending" } }),
+    prisma.gtmAgent.findMany({ orderBy: { name: "asc" } }),
+    prisma.gtmWeek.findFirst({
+      where: { weekStart: { lte: now } },
+      orderBy: { weekStart: "desc" },
+      include: {
+        activities: { orderBy: [{ priority: "asc" }, { createdAt: "asc" }] },
+      },
+    }),
+    prisma.gtmAgentRun.findMany({
+      take: 20,
+      orderBy: { startedAt: "desc" },
+      include: { agent: { select: { displayName: true } } },
+    }),
+  ]);
+
+  return NextResponse.json({
+    overview: {
+      totalActivities,
+      completedActivities,
+      pendingActivities,
+      completionRate: totalActivities > 0
+        ? Math.round((completedActivities / totalActivities) * 100)
+        : 0,
+    },
+    agents,
+    currentWeek,
+    recentRuns,
+  });
+}
+
+function getMonday(d: Date): Date {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  date.setDate(diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+```
+
+- [ ] **Step 2: Create weeks endpoint (calendar)**
+
+Create `src/app/api/admin/gtm/weeks/route.ts`:
+
+```typescript
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url);
+  const limit = parseInt(url.searchParams.get("limit") || "12");
+  const offset = parseInt(url.searchParams.get("offset") || "0");
+
+  const weeks = await prisma.gtmWeek.findMany({
+    take: limit,
+    skip: offset,
+    orderBy: { weekStart: "asc" },
+    include: {
+      activities: {
+        orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
+      },
+    },
+  });
+
+  const weeksWithStats = weeks.map((week) => ({
+    ...week,
+    stats: {
+      total: week.activities.length,
+      done: week.activities.filter((a) => a.status === "done").length,
+      inProgress: week.activities.filter((a) => a.status === "in_progress").length,
+      pending: week.activities.filter((a) => a.status === "pending").length,
+    },
+  }));
+
+  return NextResponse.json(weeksWithStats);
+}
+```
+
+- [ ] **Step 3: Create activity update endpoint**
+
+Create `src/app/api/admin/gtm/activities/[id]/route.ts`:
+
+```typescript
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const body = await req.json();
+
+  const data: Record<string, unknown> = {};
+  if (body.status !== undefined) {
+    data.status = body.status;
+    if (body.status === "done") data.completedAt = new Date();
+    if (body.status === "pending") data.completedAt = null;
+  }
+  if (body.title !== undefined) data.title = body.title;
+  if (body.notes !== undefined) data.notes = body.notes;
+  if (body.priority !== undefined) data.priority = body.priority;
+  if (body.output !== undefined) data.output = body.output;
+
+  const activity = await prisma.gtmActivity.update({
+    where: { id },
+    data,
+  });
+
+  return NextResponse.json(activity);
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  await prisma.gtmActivity.delete({ where: { id } });
+  return NextResponse.json({ deleted: true });
+}
+```
+
+- [ ] **Step 4: Create agents list + update endpoints**
+
+Create `src/app/api/admin/gtm/agents/route.ts`:
+
+```typescript
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export async function GET() {
+  const agents = await prisma.gtmAgent.findMany({
+    orderBy: { name: "asc" },
+    include: {
+      runs: {
+        take: 5,
+        orderBy: { startedAt: "desc" },
+      },
+    },
+  });
+  return NextResponse.json(agents);
+}
+```
+
+Create `src/app/api/admin/gtm/agents/[id]/route.ts`:
+
+```typescript
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const body = await req.json();
+
+  const data: Record<string, unknown> = {};
+  if (body.status !== undefined) data.status = body.status;
+  if (body.schedule !== undefined) data.schedule = body.schedule;
+  if (body.config !== undefined) data.config = JSON.stringify(body.config);
+
+  const agent = await prisma.gtmAgent.update({ where: { id }, data });
+  return NextResponse.json(agent);
+}
+```
+
+- [ ] **Step 5: Create manual agent trigger endpoint**
+
+Create `src/app/api/admin/gtm/agents/[id]/trigger/route.ts`:
+
+```typescript
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+// Manually trigger an agent run via the GTM cron orchestrator
+export async function POST(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  const agent = await prisma.gtmAgent.findUnique({ where: { id } });
+  if (!agent) {
+    return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+  }
+
+  // Create a pending run
+  const run = await prisma.gtmAgentRun.create({
+    data: {
+      agentId: id,
+      status: "running",
+    },
+  });
+
+  // Trigger the agent's cron endpoint
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://peeeky.com";
+  try {
+    await fetch(`${baseUrl}/api/cron/gtm-agents`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.CRON_SECRET}`,
+      },
+      body: JSON.stringify({ agentName: agent.name, runId: run.id }),
+    });
+  } catch (err) {
+    await prisma.gtmAgentRun.update({
+      where: { id: run.id },
+      data: { status: "error", error: String(err), completedAt: new Date() },
+    });
+  }
+
+  return NextResponse.json({ run });
+}
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/app/api/admin/gtm/
+git commit -m "feat: GTM admin API — stats, weeks, activities, agents, trigger"
+```
+
+---
+
+### Task G4: Admin GTM Dashboard page — calendar view
+
+**Files:**
+- Create: `src/app/admin/gtm/page.tsx`
+- Modify: `src/app/admin/layout.tsx`
+
+- [ ] **Step 1: Add GTM to admin sidebar**
+
+In `src/app/admin/layout.tsx`, add to `adminLinks` array:
+
+```typescript
+const adminLinks = [
+  { href: "/admin", label: "Dashboard", icon: "📊" },
+  { href: "/admin/gtm", label: "GTM Strategy", icon: "🚀" },
+  { href: "/admin/organizations", label: "Organizations", icon: "🏢" },
+  { href: "/admin/users", label: "Users", icon: "👥" },
+  { href: "/admin/revenue", label: "Revenue", icon: "💰" },
+  { href: "/admin/usage", label: "Usage", icon: "📈" },
+  { href: "/admin/referrals", label: "Referrals", icon: "🔗" },
+  { href: "/admin/activity", label: "Activity Log", icon: "📋" },
+];
+```
+
+- [ ] **Step 2: Create the GTM dashboard page**
+
+Create `src/app/admin/gtm/page.tsx`:
+
+```tsx
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+
+interface Agent {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string;
+  schedule: string;
+  status: string;
+  lastRunAt: string | null;
+  lastRunStatus: string | null;
+  runsTotal: number;
+  runsSuccess: number;
+  runsFailed: number;
+  runs: AgentRun[];
+}
+
+interface AgentRun {
+  id: string;
+  status: string;
+  startedAt: string;
+  completedAt: string | null;
+  duration: number | null;
+  output: string | null;
+  itemsCreated: number;
+}
+
+interface Activity {
+  id: string;
+  title: string;
+  category: string;
+  status: string;
+  priority: number;
+  output: string | null;
+  notes: string | null;
+  completedAt: string | null;
+}
+
+interface Week {
+  id: string;
+  weekStart: string;
+  weekNumber: number;
+  goals: string | null;
+  activities: Activity[];
+  stats: {
+    total: number;
+    done: number;
+    inProgress: number;
+    pending: number;
+  };
+}
+
+interface GtmStats {
+  overview: {
+    totalActivities: number;
+    completedActivities: number;
+    pendingActivities: number;
+    completionRate: number;
+  };
+  agents: Agent[];
+  currentWeek: Week | null;
+  recentRuns: Array<AgentRun & { agent: { displayName: string } }>;
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  content: "bg-blue-500/20 text-blue-400",
+  social: "bg-purple-500/20 text-purple-400",
+  community: "bg-green-500/20 text-green-400",
+  outbound: "bg-orange-500/20 text-orange-400",
+  github: "bg-gray-500/20 text-gray-400",
+  ads: "bg-red-500/20 text-red-400",
+  appsumo: "bg-yellow-500/20 text-yellow-400",
+  other: "bg-white/10 text-white/60",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  active: "text-green-400",
+  paused: "text-yellow-400",
+  error: "text-red-400",
+};
+
+export default function GtmDashboard() {
+  const [stats, setStats] = useState<GtmStats | null>(null);
+  const [weeks, setWeeks] = useState<Week[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"calendar" | "agents">("calendar");
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [statsRes, weeksRes] = await Promise.all([
+        fetch("/api/admin/gtm/stats"),
+        fetch("/api/admin/gtm/weeks"),
+      ]);
+      setStats(await statsRes.json());
+      setWeeks(await weeksRes.json());
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  async function toggleActivity(id: string, currentStatus: string) {
+    const newStatus = currentStatus === "done" ? "pending" : "done";
+    await fetch(`/api/admin/gtm/activities/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    fetchData();
+  }
+
+  async function toggleAgent(id: string, currentStatus: string) {
+    const newStatus = currentStatus === "active" ? "paused" : "active";
+    await fetch(`/api/admin/gtm/agents/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    fetchData();
+  }
+
+  async function triggerAgent(id: string) {
+    await fetch(`/api/admin/gtm/agents/${id}/trigger`, { method: "POST" });
+    fetchData();
+  }
+
+  if (loading) return <div className="text-white/40">Loading GTM dashboard...</div>;
+  if (!stats) return <div className="text-red-400">Failed to load</div>;
+
+  const isCurrentWeek = (weekStart: string) => {
+    const ws = new Date(weekStart);
+    const now = new Date();
+    const weekEnd = new Date(ws);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    return now >= ws && now < weekEnd;
+  };
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold text-white mb-1">GTM Strategy</h1>
+      <p className="text-sm text-white/40 mb-6">R$20K/month in 12 months — track progress and manage agents</p>
+
+      {/* Overview cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <p className="text-xs font-medium text-white/40 uppercase tracking-wider">Completion</p>
+          <p className="mt-1 text-3xl font-bold text-[#6C5CE7]">{stats.overview.completionRate}%</p>
+          <p className="text-xs text-white/30">{stats.overview.completedActivities}/{stats.overview.totalActivities} activities</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <p className="text-xs font-medium text-white/40 uppercase tracking-wider">This Week</p>
+          <p className="mt-1 text-3xl font-bold text-white">
+            {stats.currentWeek?.stats.done || 0}/{stats.currentWeek?.stats.total || 0}
+          </p>
+          <p className="text-xs text-white/30">tasks done</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <p className="text-xs font-medium text-white/40 uppercase tracking-wider">Agents Active</p>
+          <p className="mt-1 text-3xl font-bold text-green-400">
+            {stats.agents.filter((a) => a.status === "active").length}/{stats.agents.length}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <p className="text-xs font-medium text-white/40 uppercase tracking-wider">Pending</p>
+          <p className="mt-1 text-3xl font-bold text-orange-400">{stats.overview.pendingActivities}</p>
+          <p className="text-xs text-white/30">activities remaining</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-4 mb-6 border-b border-white/10 pb-2">
+        <button
+          onClick={() => setActiveTab("calendar")}
+          className={`text-sm font-medium pb-2 border-b-2 transition ${
+            activeTab === "calendar" ? "border-[#6C5CE7] text-white" : "border-transparent text-white/40 hover:text-white/60"
+          }`}
+        >
+          Weekly Calendar
+        </button>
+        <button
+          onClick={() => setActiveTab("agents")}
+          className={`text-sm font-medium pb-2 border-b-2 transition ${
+            activeTab === "agents" ? "border-[#6C5CE7] text-white" : "border-transparent text-white/40 hover:text-white/60"
+          }`}
+        >
+          Agent Management
+        </button>
+      </div>
+
+      {/* Calendar Tab */}
+      {activeTab === "calendar" && (
+        <div className="space-y-4">
+          {weeks.map((week) => {
+            const isCurrent = isCurrentWeek(week.weekStart);
+            const goals = week.goals ? JSON.parse(week.goals) : null;
+            const weekEnd = new Date(week.weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+
+            return (
+              <div
+                key={week.id}
+                className={`rounded-2xl border p-5 ${
+                  isCurrent ? "border-[#6C5CE7]/50 bg-[#6C5CE7]/5" : "border-white/10 bg-white/5"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-bold text-white">
+                      Week {week.weekNumber}
+                      {isCurrent && (
+                        <span className="ml-2 text-xs bg-[#6C5CE7] text-white px-2 py-0.5 rounded-full">
+                          Current
+                        </span>
+                      )}
+                    </h3>
+                    <span className="text-xs text-white/30">
+                      {new Date(week.weekStart).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      {" — "}
+                      {weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </span>
+                    {goals?.focus && (
+                      <span className="text-xs bg-white/10 text-white/50 px-2 py-0.5 rounded-full">
+                        {goals.focus}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-white/30">
+                      {week.stats.done}/{week.stats.total}
+                    </span>
+                    <div className="w-24 h-2 rounded-full bg-white/10">
+                      <div
+                        className="h-2 rounded-full bg-[#6C5CE7] transition-all"
+                        style={{ width: `${week.stats.total > 0 ? (week.stats.done / week.stats.total) * 100 : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  {week.activities.map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-center gap-3 group"
+                    >
+                      <button
+                        onClick={() => toggleActivity(activity.id, activity.status)}
+                        className={`w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition ${
+                          activity.status === "done"
+                            ? "bg-[#6C5CE7] border-[#6C5CE7]"
+                            : "border-white/20 hover:border-white/40"
+                        }`}
+                      >
+                        {activity.status === "done" && (
+                          <span className="text-white text-xs">✓</span>
+                        )}
+                      </button>
+                      <span
+                        className={`text-sm flex-1 ${
+                          activity.status === "done" ? "text-white/30 line-through" : "text-white/80"
+                        }`}
+                      >
+                        {activity.title}
+                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${CATEGORY_COLORS[activity.category] || CATEGORY_COLORS.other}`}>
+                        {activity.category}
+                      </span>
+                      {activity.priority === 1 && (
+                        <span className="text-[10px] text-red-400">HIGH</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Agents Tab */}
+      {activeTab === "agents" && (
+        <div className="space-y-4">
+          {stats.agents.map((agent) => (
+            <div key={agent.id} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-white">{agent.displayName}</h3>
+                  <p className="text-xs text-white/40">{agent.description}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-medium ${STATUS_COLORS[agent.status]}`}>
+                    {agent.status.toUpperCase()}
+                  </span>
+                  <button
+                    onClick={() => toggleAgent(agent.id, agent.status)}
+                    className="text-xs px-3 py-1 rounded-lg border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition"
+                  >
+                    {agent.status === "active" ? "Pause" : "Resume"}
+                  </button>
+                  <button
+                    onClick={() => triggerAgent(agent.id)}
+                    className="text-xs px-3 py-1 rounded-lg bg-[#6C5CE7] text-white hover:bg-[#5A4BD1] transition"
+                  >
+                    Run Now
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-3 text-xs">
+                <div>
+                  <span className="text-white/30">Schedule</span>
+                  <p className="text-white/60 font-mono">{agent.schedule}</p>
+                </div>
+                <div>
+                  <span className="text-white/30">Last Run</span>
+                  <p className="text-white/60">
+                    {agent.lastRunAt
+                      ? new Date(agent.lastRunAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                      : "Never"}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-white/30">Runs</span>
+                  <p className="text-white/60">
+                    {agent.runsTotal} total ({agent.runsSuccess} ok, {agent.runsFailed} err)
+                  </p>
+                </div>
+                <div>
+                  <span className="text-white/30">Last Status</span>
+                  <p className={agent.lastRunStatus === "success" ? "text-green-400" : agent.lastRunStatus === "error" ? "text-red-400" : "text-white/40"}>
+                    {agent.lastRunStatus || "—"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Recent runs */}
+              {agent.runs && agent.runs.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-white/5">
+                  <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2">Recent Runs</p>
+                  <div className="space-y-1">
+                    {agent.runs.slice(0, 3).map((run) => (
+                      <div key={run.id} className="flex items-center gap-3 text-xs">
+                        <span className={`w-2 h-2 rounded-full ${
+                          run.status === "success" ? "bg-green-400" :
+                          run.status === "error" ? "bg-red-400" :
+                          run.status === "running" ? "bg-yellow-400 animate-pulse" : "bg-white/20"
+                        }`} />
+                        <span className="text-white/40">
+                          {new Date(run.startedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        <span className="text-white/60 flex-1 truncate">{run.output || "—"}</span>
+                        {run.duration && <span className="text-white/30">{run.duration}s</span>}
+                        {run.itemsCreated > 0 && <span className="text-[#6C5CE7]">{run.itemsCreated} items</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/app/admin/gtm/ src/app/admin/layout.tsx
+git commit -m "feat: GTM admin dashboard — weekly calendar + agent management"
+```
+
+---
+
+## Workstream H: Cloud Agent Orchestration via Vercel Crons (Priority 1 — Week 2-3)
+
+### Task H1: Central agent orchestrator cron
+
+**Files:**
+- Create: `src/app/api/cron/gtm-agents/route.ts`
+- Create: `src/modules/gtm/agent-runner.ts`
+
+- [ ] **Step 1: Create agent runner module**
+
+Create `src/modules/gtm/agent-runner.ts`:
+
+```typescript
+import { prisma } from "@/lib/prisma";
+
+type AgentExecutor = (config: string | null) => Promise<{
+  output: string;
+  itemsCreated: number;
+}>;
+
+const AGENT_EXECUTORS: Record<string, AgentExecutor> = {
+  "content-writer": executeContentWriter,
+  "social-manager": executeSocialManager,
+  "community-rep": executeCommunityRep,
+  "outbound-sales": executeOutboundSales,
+  "github-maintainer": executeGithubMaintainer,
+  "analytics-reporter": executeAnalyticsReporter,
+};
+
+export async function runAgent(agentName: string, runId?: string) {
+  const agent = await prisma.gtmAgent.findUnique({ where: { name: agentName } });
+  if (!agent || agent.status !== "active") {
+    return { skipped: true, reason: agent ? "paused" : "not found" };
+  }
+
+  // Create or use existing run
+  const run = runId
+    ? await prisma.gtmAgentRun.findUnique({ where: { id: runId } })
+    : await prisma.gtmAgentRun.create({
+        data: { agentId: agent.id, status: "running" },
+      });
+
+  if (!run) return { skipped: true, reason: "run not found" };
+
+  const startTime = Date.now();
+  const executor = AGENT_EXECUTORS[agentName];
+
+  if (!executor) {
+    await prisma.gtmAgentRun.update({
+      where: { id: run.id },
+      data: { status: "error", error: "No executor found", completedAt: new Date() },
+    });
+    return { error: "No executor for agent: " + agentName };
+  }
+
+  try {
+    const result = await executor(agent.config);
+    const duration = Math.round((Date.now() - startTime) / 1000);
+
+    await prisma.$transaction([
+      prisma.gtmAgentRun.update({
+        where: { id: run.id },
+        data: {
+          status: "success",
+          completedAt: new Date(),
+          duration,
+          output: result.output,
+          itemsCreated: result.itemsCreated,
+        },
+      }),
+      prisma.gtmAgent.update({
+        where: { id: agent.id },
+        data: {
+          lastRunAt: new Date(),
+          lastRunStatus: "success",
+          lastRunOutput: result.output,
+          runsTotal: { increment: 1 },
+          runsSuccess: { increment: 1 },
+        },
+      }),
+    ]);
+
+    return { success: true, output: result.output, itemsCreated: result.itemsCreated };
+  } catch (err) {
+    const duration = Math.round((Date.now() - startTime) / 1000);
+    const errorMsg = err instanceof Error ? err.message : String(err);
+
+    await prisma.$transaction([
+      prisma.gtmAgentRun.update({
+        where: { id: run.id },
+        data: { status: "error", completedAt: new Date(), duration, error: errorMsg },
+      }),
+      prisma.gtmAgent.update({
+        where: { id: agent.id },
+        data: {
+          lastRunAt: new Date(),
+          lastRunStatus: "error",
+          lastRunOutput: errorMsg,
+          runsTotal: { increment: 1 },
+          runsFailed: { increment: 1 },
+        },
+      }),
+    ]);
+
+    return { error: errorMsg };
+  }
+}
+
+// --- Agent Executors ---
+// Each executor calls Claude API or internal APIs to do the actual work
+
+async function executeContentWriter(_config: string | null) {
+  // Call Claude API to generate blog posts
+  // For now, creates a placeholder that the Claude Remote Trigger fills
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    output: `Content writer triggered for ${today}. Claude Remote Trigger will generate drafts.`,
+    itemsCreated: 0,
+  };
+}
+
+async function executeSocialManager(_config: string | null) {
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    output: `Social manager triggered for ${today}. Claude Remote Trigger will generate posts.`,
+    itemsCreated: 0,
+  };
+}
+
+async function executeCommunityRep(_config: string | null) {
+  // This agent searches for relevant threads and drafts responses
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    output: `Community rep triggered for ${today}. Scanning Reddit, IH, HN for relevant threads.`,
+    itemsCreated: 0,
+  };
+}
+
+async function executeOutboundSales(_config: string | null) {
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    output: `Outbound sales triggered for ${today}. Claude Remote Trigger will research leads and draft emails.`,
+    itemsCreated: 0,
+  };
+}
+
+async function executeGithubMaintainer(_config: string | null) {
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    output: `GitHub maintainer triggered for ${today}. Checking issues and PRs.`,
+    itemsCreated: 0,
+  };
+}
+
+async function executeAnalyticsReporter(_config: string | null) {
+  // This one we can actually implement with real data
+  const [users, docs, views, orgs] = await Promise.all([
+    prisma.user.count(),
+    prisma.document.count(),
+    prisma.view.count(),
+    prisma.organization.groupBy({
+      by: ["plan"],
+      _count: true,
+    }),
+  ]);
+
+  const proOrgs = orgs.find((o) => o.plan === "PRO")?._count || 0;
+  const bizOrgs = orgs.find((o) => o.plan === "BUSINESS")?._count || 0;
+  const mrr = proOrgs * 39 + bizOrgs * 129;
+
+  const report = `Weekly Report — ${new Date().toISOString().slice(0, 10)}
+MRR: $${mrr} | Users: ${users} | Docs: ${docs} | Views: ${views}
+Paying: ${proOrgs} Pro + ${bizOrgs} Business`;
+
+  return { output: report, itemsCreated: 1 };
+}
+```
+
+- [ ] **Step 2: Create the cron endpoint**
+
+Create `src/app/api/cron/gtm-agents/route.ts`:
+
+```typescript
+import { NextRequest, NextResponse } from "next/server";
+import { runAgent } from "@/modules/gtm/agent-runner";
+import { prisma } from "@/lib/prisma";
+
+// Called by Vercel Cron every hour — checks which agents need to run
+// Also called directly via POST for manual triggers
+export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const agents = await prisma.gtmAgent.findMany({
+    where: { status: "active" },
+  });
+
+  const results: Record<string, unknown> = {};
+
+  for (const agent of agents) {
+    if (shouldRunNow(agent.schedule, agent.lastRunAt)) {
+      results[agent.name] = await runAgent(agent.name);
+    } else {
+      results[agent.name] = { skipped: true, reason: "not scheduled now" };
+    }
+  }
+
+  return NextResponse.json({ results, timestamp: new Date().toISOString() });
+}
+
+// Manual trigger from admin dashboard
+export async function POST(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { agentName, runId } = await req.json();
+  const result = await runAgent(agentName, runId);
+  return NextResponse.json(result);
+}
+
+function shouldRunNow(cronExpr: string, lastRunAt: Date | null): boolean {
+  // Simple cron matching — checks if current hour/day matches the cron schedule
+  const now = new Date();
+  const parts = cronExpr.split(" ");
+  if (parts.length < 5) return false;
+
+  const [minute, hour, , , dayOfWeek] = parts;
+
+  // Check if already ran this hour
+  if (lastRunAt) {
+    const hoursSinceLastRun = (now.getTime() - new Date(lastRunAt).getTime()) / (1000 * 60 * 60);
+    if (hoursSinceLastRun < 1) return false;
+  }
+
+  // Check minute (with 5-min tolerance since cron runs hourly)
+  if (minute !== "*") {
+    const cronMinute = parseInt(minute);
+    if (Math.abs(now.getUTCMinutes() - cronMinute) > 5) return false;
+  }
+
+  // Check hour
+  if (hour !== "*") {
+    if (parseInt(hour) !== now.getUTCHours()) return false;
+  }
+
+  // Check day of week (0=Sun, 1-5=Mon-Fri, 6=Sat)
+  if (dayOfWeek !== "*") {
+    const days = dayOfWeek.includes("-")
+      ? expandRange(dayOfWeek)
+      : dayOfWeek.split(",").map(Number);
+    if (!days.includes(now.getUTCDay())) return false;
+  }
+
+  return true;
+}
+
+function expandRange(range: string): number[] {
+  const [start, end] = range.split("-").map(Number);
+  const result = [];
+  for (let i = start; i <= end; i++) result.push(i);
+  return result;
+}
+```
+
+- [ ] **Step 3: Add to vercel.json crons**
+
+Update `vercel.json` to add the GTM agent cron (runs every hour):
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/cleanup",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-analytics",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/signature-reminders",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/gtm-agents",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/onboarding-emails",
+      "schedule": "0 10 * * *"
+    }
+  ]
+}
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/modules/gtm/ src/app/api/cron/gtm-agents/ vercel.json
+git commit -m "feat: cloud agent orchestration — hourly cron checks schedules, runs agents, logs results"
+```
+
+---
+
+### Task H2: Connect agent outputs to real actions
+
+**Files:**
+- Create: `src/modules/gtm/actions/send-email.ts`
+- Create: `src/modules/gtm/actions/publish-blog.ts`
+
+- [ ] **Step 1: Create email sending action**
+
+Create `src/modules/gtm/actions/send-email.ts`:
+
+```typescript
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+interface OutboundEmail {
+  to: string;
+  subject: string;
+  body: string;
+  from?: string;
+}
+
+export async function sendOutboundEmail(email: OutboundEmail) {
+  const result = await resend.emails.send({
+    from: email.from || "Alex Moreira <alex@peeeky.com>",
+    to: email.to,
+    subject: email.subject,
+    text: email.body,
+  });
+
+  return {
+    id: result.data?.id,
+    success: !result.error,
+    error: result.error?.message,
+  };
+}
+
+export async function sendBatchEmails(emails: OutboundEmail[]) {
+  const results = [];
+  for (const email of emails) {
+    // Rate limit: 1 email per second
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    results.push(await sendOutboundEmail(email));
+  }
+  return results;
+}
+```
+
+- [ ] **Step 2: Create blog publishing action**
+
+Create `src/modules/gtm/actions/publish-blog.ts`:
+
+```typescript
+import { writeFileSync, existsSync, mkdirSync } from "fs";
+import { join } from "path";
+
+interface BlogPost {
+  slug: string;
+  title: string;
+  description: string;
+  content: string;
+  author?: string;
+  category?: string;
+  tags?: string[];
+}
+
+export async function saveBlogDraft(post: BlogPost) {
+  const date = new Date().toISOString().slice(0, 10);
+  const dir = join(process.cwd(), "content", "blog");
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+
+  const filename = `${date}-${post.slug}.mdx`;
+  const filepath = join(dir, filename);
+
+  const frontmatter = `---
+title: "${post.title}"
+description: "${post.description}"
+date: "${date}"
+author: "${post.author || "Alex Moreira"}"
+category: "${post.category || "insight"}"
+tags: ${JSON.stringify(post.tags || [])}
+---
+
+${post.content}`;
+
+  writeFileSync(filepath, frontmatter, "utf-8");
+
+  return { filepath: `content/blog/${filename}`, slug: post.slug };
+}
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/modules/gtm/actions/
+git commit -m "feat: GTM action modules — email sending and blog publishing"
+```
+
+---
+
+## Summary: Execution Order (Updated)
 
 | Week | Tasks | Estimated Time |
 |------|-------|---------------|
 | 1 | A1-A4 (AppSumo integration), D1-D2 (agent prompts + dirs), F1 (pixel) | 3-4 hours |
-| 2 | B1-B4 (peeeky-js SDK), D3 (scheduled triggers), E1 (email templates) | 3-4 hours |
-| 3 | C1-C3 (peeeky-viewer), E2 (email cron) | 3-4 hours |
-| 4 | Testing, deploy, submit to AppSumo, publish npm packages | 2-3 hours |
+| 2 | B1-B4 (peeeky-js SDK), D3 (scheduled triggers), E1 (email templates), G1-G2 (GTM schema + seed) | 4-5 hours |
+| 3 | C1-C3 (peeeky-viewer), E2 (email cron), G3-G4 (GTM API + dashboard UI), H1-H2 (cloud orchestration) | 5-6 hours |
+| 4 | Testing, deploy, submit to AppSumo, publish npm packages, verify all crons running | 2-3 hours |
 
-**Total: ~12-15 hours of development across 4 weeks.**
+**Total: ~15-18 hours of development across 4 weeks.**
 
-After week 4, all technical infrastructure is in place. The agents take over daily execution. Your role shifts to reviewing outputs and making strategic decisions (~5h/week).
+After week 4, all infrastructure is live:
+- AppSumo deal processing payments
+- Open-source repos on GitHub + npm
+- 6 agents running autonomously via Vercel Crons (no local machine needed)
+- GTM dashboard at /admin/gtm with weekly calendar and agent management
+- Onboarding emails firing automatically
+- Retargeting pixel collecting data for future ads
+
+Your role shifts to: review agent outputs, approve/reject drafts, monitor GTM dashboard (~5h/week).
