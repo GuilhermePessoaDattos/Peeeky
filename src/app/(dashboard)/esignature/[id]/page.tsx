@@ -74,6 +74,9 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
   const [numPages, setNumPages] = useState(0);
   const [dragging, setDragging] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [templates, setTemplates] = useState<{ id: string; name: string; fields: any[] }[]>([]);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [templateName, setTemplateName] = useState("");
   const pdfContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchRequest = useCallback(() => {
@@ -84,6 +87,39 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
   }, [id]);
 
   useEffect(() => { fetchRequest(); }, [fetchRequest]);
+
+  const fetchTemplates = () => {
+    fetch("/api/esignature/templates").then(r => r.json()).then(data => {
+      setTemplates(Array.isArray(data) ? data : []);
+    });
+  };
+
+  const saveAsTemplate = async () => {
+    if (!templateName.trim() || !request?.fields.length) return;
+    const fields = request.fields.map(f => ({
+      type: f.type, pageNumber: f.pageNumber, x: f.x, y: f.y,
+      width: f.width, height: f.height, label: f.label,
+    }));
+    await fetch("/api/esignature/templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: templateName.trim(), fields }),
+    });
+    setTemplateName("");
+    fetchTemplates();
+  };
+
+  const loadTemplate = async (template: { fields: any[] }) => {
+    for (const f of template.fields) {
+      await fetch(`/api/esignature/${id}/fields`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(f),
+      });
+    }
+    setShowTemplates(false);
+    fetchRequest();
+  };
 
   const handlePdfClick = async (e: React.MouseEvent<HTMLDivElement>) => {
     if (!activeTool || !request || request.status !== "DRAFT") return;
@@ -304,6 +340,53 @@ export default function SignatureRequestDetailPage({ params }: { params: Promise
               </span>
             )}
           </div>
+
+          {/* Template actions */}
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <button
+              onClick={() => { setShowTemplates(!showTemplates); if (!showTemplates) fetchTemplates(); }}
+              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            >
+              Load Template
+            </button>
+            {request.fields.length > 0 && (
+              <div className="flex items-center gap-1">
+                <input
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="Template name..."
+                  className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs w-36 outline-none focus:border-[#6C5CE7]"
+                />
+                <button
+                  onClick={saveAsTemplate}
+                  disabled={!templateName.trim()}
+                  className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 disabled:opacity-40"
+                >
+                  Save
+                </button>
+              </div>
+            )}
+          </div>
+          {showTemplates && (
+            <div className="mb-3 rounded-xl border border-gray-200 bg-white p-3">
+              {templates.length === 0 ? (
+                <p className="text-xs text-gray-400">No saved templates yet.</p>
+              ) : (
+                <div className="space-y-1">
+                  {templates.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => loadTemplate(t)}
+                      className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-xs hover:bg-gray-50 transition text-left"
+                    >
+                      <span className="font-medium text-[#1A1A2E]">{t.name}</span>
+                      <span className="text-gray-400">{(t.fields as any[]).length} fields</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Page navigation */}
           <div className="flex items-center gap-2 mb-3">

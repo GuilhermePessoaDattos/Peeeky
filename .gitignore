@@ -10,3 +10,9 @@ next-env.d.ts
 .vercel
 .firecrawl/
 .claude/
+.env.production
+.playwright-mcp/
+*.png
+!src/**/*.png
+!public/**/*.png
+!extensions/**/*.png

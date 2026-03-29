@@ -35,9 +35,10 @@ model User {
   email         String    @unique
   emailVerified DateTime?
   image         String?
-  referralCode  String?   @unique
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  referralCode     String?   @unique
+  stripeConnectId  String?   @unique
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   memberships Membership[]
   accounts    Account[]
@@ -327,6 +328,19 @@ model SignatureCompletion {
   auditHash          String   // SHA-256 hash of document + fields + timestamp for tamper detection
 
   signatureRequest SignatureRequest @relation(fields: [signatureRequestId], references: [id], onDelete: Cascade)
+}
+
+// ─── Signature Templates ─────────────────────────────────
+
+model SignatureTemplate {
+  id        String   @id @default(cuid())
+  orgId     String
+  name      String
+  fields    Json     // Array of { type, pageNumber, x, y, width, height, label, required }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orgId])
 }
 
 // ─── NextAuth Models ────────────────────────────────────

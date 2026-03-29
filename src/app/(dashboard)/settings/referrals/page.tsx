@@ -21,8 +21,13 @@ export default function ReferralsPage() {
   const [active, setActive] = useState(0);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [connectStatus, setConnectStatus] = useState<{ connected: boolean; payoutsEnabled?: boolean } | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [payingOut, setPayingOut] = useState(false);
+  const [payoutResult, setPayoutResult] = useState<string | null>(null);
 
   useEffect(() => {
+    fetch("/api/referrals/connect").then(r => r.json()).then(setConnectStatus).catch(() => {});
     fetch("/api/referrals")
       .then((r) => r.json())
       .then((data) => {
@@ -97,6 +102,87 @@ export default function ReferralsPage() {
             ${(active * 39 * 0.2).toFixed(0)}
           </p>
         </div>
+      </div>
+
+      {/* Stripe Connect Payouts */}
+      <div className="mb-8 rounded-lg border bg-white p-6">
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">Payout Settings</h2>
+        {!connectStatus?.connected ? (
+          <div>
+            <p className="text-xs text-gray-500 mb-3">
+              Connect your Stripe account to receive automatic referral payouts (20% commission).
+            </p>
+            <button
+              onClick={async () => {
+                setConnecting(true);
+                try {
+                  const res = await fetch("/api/referrals/connect", { method: "POST" });
+                  const data = await res.json();
+                  if (data.url) window.location.href = data.url;
+                } finally {
+                  setConnecting(false);
+                }
+              }}
+              disabled={connecting}
+              className="rounded-lg bg-[#6C5CE7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#6C5CE7]/90 disabled:opacity-50"
+            >
+              {connecting ? "Connecting..." : "Connect Stripe Account"}
+            </button>
+          </div>
+        ) : !connectStatus.payoutsEnabled ? (
+          <div>
+            <p className="text-xs text-yellow-600 mb-3">
+              Stripe account connected but onboarding incomplete. Complete setup to receive payouts.
+            </p>
+            <button
+              onClick={async () => {
+                const res = await fetch("/api/referrals/connect", { method: "POST" });
+                const data = await res.json();
+                if (data.url) window.location.href = data.url;
+              }}
+              className="rounded-lg border border-yellow-400 px-4 py-2 text-sm font-semibold text-yellow-700 hover:bg-yellow-50"
+            >
+              Complete Setup
+            </button>
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              <span className="text-xs font-medium text-green-700">Stripe connected — payouts enabled</span>
+            </div>
+            {active > 0 && (
+              <div>
+                <button
+                  onClick={async () => {
+                    setPayingOut(true);
+                    setPayoutResult(null);
+                    try {
+                      const res = await fetch("/api/referrals/payout", { method: "POST" });
+                      const data = await res.json();
+                      if (data.success) {
+                        setPayoutResult(`Payout of $${data.amount} sent for ${data.referralsPaid} referral(s)`);
+                      } else {
+                        setPayoutResult(data.error || "Payout failed");
+                      }
+                    } catch {
+                      setPayoutResult("Payout failed");
+                    } finally {
+                      setPayingOut(false);
+                    }
+                  }}
+                  disabled={payingOut}
+                  className="rounded-lg bg-[#00B894] px-4 py-2 text-sm font-semibold text-white hover:bg-[#00B894]/90 disabled:opacity-50"
+                >
+                  {payingOut ? "Processing..." : `Request Payout ($${(active * 39 * 0.2).toFixed(0)})`}
+                </button>
+                {payoutResult && (
+                  <p className="mt-2 text-xs text-gray-600">{payoutResult}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Referral List */}
