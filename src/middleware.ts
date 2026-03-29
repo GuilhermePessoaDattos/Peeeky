@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import { authConfig } from "@/modules/auth/auth.config";
 import { NextResponse } from "next/server";
+import { ADMIN_EMAILS } from "@/config/admin";
 
 // Uses edge-safe config (no Prisma) for middleware
 const { auth } = NextAuth(authConfig);
@@ -13,7 +14,7 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  const publicPaths = ["/login", "/api/auth", "/api/health", "/api/debug-auth", "/api/track", "/api/links", "/api/webhooks", "/api/ai", "/view", "/vs", "/for", "/room", "/privacy", "/terms", "/blog"];
+  const publicPaths = ["/login", "/api/auth", "/api/health", "/api/debug-auth", "/api/track", "/api/links", "/api/webhooks", "/api/ai", "/view", "/vs", "/for", "/room", "/privacy", "/terms", "/blog", "/sign", "/api/esignature/sign", "/api/documents/import-url", "/api/extension"];
   if (publicPaths.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
@@ -22,6 +23,14 @@ export default auth((req) => {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Admin routes — restrict to admin emails
+  if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
+    const email = req.auth.user.email?.toLowerCase();
+    if (!email || !ADMIN_EMAILS.includes(email)) {
+      return NextResponse.redirect(new URL("/documents", req.url));
+    }
   }
 
   return NextResponse.next();
