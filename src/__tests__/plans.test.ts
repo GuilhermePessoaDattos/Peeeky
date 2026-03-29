@@ -6,7 +6,7 @@ describe("PLAN_LIMITS", () => {
     expect(PLAN_LIMITS.FREE.documents).toBe(5);
     expect(PLAN_LIMITS.FREE.linksPerDoc).toBe(3);
     expect(PLAN_LIMITS.FREE.members).toBe(1);
-    expect(PLAN_LIMITS.FREE.aiChatsPerMonth).toBe(0);
+    expect(PLAN_LIMITS.FREE.aiChatsPerMonth).toBe(10);
     expect(PLAN_LIMITS.FREE.customDomain).toBe(false);
     expect(PLAN_LIMITS.FREE.removeBadge).toBe(false);
   });

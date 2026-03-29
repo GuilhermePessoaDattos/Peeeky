@@ -3,7 +3,7 @@ export const PLAN_LIMITS = {
     documents: 5,
     linksPerDoc: 3,
     members: 1,
-    aiChatsPerMonth: 0,
+    aiChatsPerMonth: 10,
     dataRetentionDays: 30,
     customDomain: false,
     removeBadge: false,
