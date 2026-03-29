@@ -290,6 +290,10 @@ export function HeroSection() {
                       {pdfPages.map((page, i) => (
                         <motion.div
                           key={i}
+                          initial={{
+                            backgroundColor: "transparent",
+                            borderColor: "transparent",
+                          }}
                           animate={{
                             backgroundColor:
                               i === activePage

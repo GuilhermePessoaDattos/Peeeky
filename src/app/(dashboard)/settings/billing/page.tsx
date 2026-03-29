@@ -84,6 +84,7 @@ export default function BillingPage() {
             <li>&#10003; 5 documents</li>
             <li>&#10003; 3 links per document</li>
             <li>&#10003; Basic analytics</li>
+            <li>&#10003; AI Chat (10/month)</li>
             <li>&#10003; Password protection</li>
           </ul>
           <div className="rounded-lg bg-gray-100 py-2 text-center text-sm font-medium text-gray-500">

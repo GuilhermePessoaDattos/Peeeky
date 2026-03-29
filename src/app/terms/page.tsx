@@ -67,7 +67,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-xl font-bold text-gray-900 mt-8 mb-3">8. Plan Limits</h2>
-            <p>Free plan: 5 documents, 3 links per document, 1 team member, basic analytics. Pro plan ($39/mo): unlimited documents and links, 3 team members, AI Chat (50/month), full analytics. Business plan ($129/mo): everything in Pro, plus unlimited AI Chat, Data Rooms, custom domain, 10 team members, audit log.</p>
+            <p>Free plan: 5 documents, 3 links per document, 1 team member, basic analytics, AI Chat (10/month). Pro plan ($39/mo): unlimited documents and links, 3 team members, AI Chat (50/month), full analytics. Business plan ($129/mo): everything in Pro, plus unlimited AI Chat, Data Rooms, custom domain, 10 team members, audit log.</p>
           </section>
 
           <section>

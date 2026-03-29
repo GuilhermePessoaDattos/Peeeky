@@ -31,7 +31,7 @@ const faqs = [
   },
   {
     q: "Is there a free plan?",
-    a: "Absolutely. The Free plan lets you upload up to 5 documents, create trackable links, and see basic page analytics — forever, no credit card required. When you're ready for AI Chat, heatmaps, and advanced access controls, you can upgrade to Pro at any time.",
+    a: "Absolutely. The Free plan lets you upload up to 5 documents, create trackable links, use AI Chat (10 questions/month), and see basic page analytics — forever, no credit card required. When you're ready for heatmaps, advanced access controls, and more AI Chat, you can upgrade to Pro at any time.",
   },
 ];
 

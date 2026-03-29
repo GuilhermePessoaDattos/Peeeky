@@ -15,6 +15,7 @@ const plans = [
       "5 documents",
       "Basic page analytics",
       "1 Data Room",
+      "AI Chat (10/month)",
       "Email notifications",
       "Secure shareable links",
     ],
