@@ -26,6 +26,33 @@ export const PLAN_LIMITS = {
     customDomain: true,
     removeBadge: true,
   },
+  APPSUMO_TIER1: {
+    documents: 50,
+    linksPerDoc: -1,
+    members: 1,
+    aiChatsPerMonth: 50,
+    dataRetentionDays: 365,
+    customDomain: false,
+    removeBadge: true,
+  },
+  APPSUMO_TIER2: {
+    documents: -1,
+    linksPerDoc: -1,
+    members: 3,
+    aiChatsPerMonth: 50,
+    dataRetentionDays: 365,
+    customDomain: false,
+    removeBadge: true,
+  },
+  APPSUMO_TIER3: {
+    documents: -1,
+    linksPerDoc: -1,
+    members: 5,
+    aiChatsPerMonth: -1,
+    dataRetentionDays: -1,
+    customDomain: true,
+    removeBadge: true,
+  },
 } as const;
 
 export type PlanType = keyof typeof PLAN_LIMITS;

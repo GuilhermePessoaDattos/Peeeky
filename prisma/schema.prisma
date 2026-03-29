@@ -25,12 +25,13 @@ model Organization {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  members   Membership[]
-  documents Document[]
-  domains   CustomDomain[]
-  audits    AuditEvent[]
-  dataRooms DataRoom[]
-  referral  Referral?
+  members        Membership[]
+  documents      Document[]
+  domains        CustomDomain[]
+  audits         AuditEvent[]
+  dataRooms      DataRoom[]
+  referral       Referral?
+  appSumoLicense AppSumoLicense?
 }
 
 model User {
@@ -380,6 +381,91 @@ model SignatureTemplate {
   @@index([orgId])
 }
 
+// ─── AppSumo ─────────────────────────────────────────────
+
+model AppSumoLicense {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  tier          Int
+  redeemedAt    DateTime?
+  redeemedById  String?       @unique
+  redeemedBy    Organization? @relation(fields: [redeemedById], references: [id])
+  createdAt     DateTime      @default(now())
+
+  @@index([code])
+}
+
+// ─── GTM Dashboard ───────────────────────────────────────
+
+model GtmWeek {
+  id          String        @id @default(cuid())
+  weekStart   DateTime
+  weekNumber  Int
+  goals       String?
+  notes       String?
+  activities  GtmActivity[]
+  createdAt   DateTime      @default(now())
+
+  @@unique([weekStart])
+  @@index([weekStart])
+}
+
+model GtmActivity {
+  id          String    @id @default(cuid())
+  weekId      String
+  week        GtmWeek   @relation(fields: [weekId], references: [id])
+  title       String
+  category    String
+  status      String    @default("pending")
+  agentId     String?
+  priority    Int       @default(2)
+  dueDate     DateTime?
+  output      String?
+  notes       String?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([weekId])
+  @@index([category])
+  @@index([status])
+}
+
+model GtmAgent {
+  id            String        @id @default(cuid())
+  name          String        @unique
+  displayName   String
+  description   String
+  schedule      String
+  status        String        @default("active")
+  lastRunAt     DateTime?
+  lastRunStatus String?
+  lastRunOutput String?
+  runsTotal     Int           @default(0)
+  runsSuccess   Int           @default(0)
+  runsFailed    Int           @default(0)
+  config        String?
+  runs          GtmAgentRun[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model GtmAgentRun {
+  id           String    @id @default(cuid())
+  agentId      String
+  agent        GtmAgent  @relation(fields: [agentId], references: [id])
+  status       String
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+  duration     Int?
+  output       String?
+  error        String?
+  itemsCreated Int       @default(0)
+
+  @@index([agentId])
+  @@index([startedAt])
+}
+
 // ─── NextAuth Models ────────────────────────────────────
 
 model Account {
@@ -471,6 +557,9 @@ enum Plan {
   FREE
   PRO
   BUSINESS
+  APPSUMO_TIER1
+  APPSUMO_TIER2
+  APPSUMO_TIER3
 }
 
 enum Role {
