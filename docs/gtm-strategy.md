@@ -3,6 +3,28 @@
 > Meta: R$20K/mês em 12 meses (~$3.700 USD/mês)
 > Com $39/mo (Pro) = ~95 clientes pagantes
 > Com mix Pro + Business = ~50-60 clientes
+> Operação 100% brand-first — sem exposição pessoal do fundador
+
+---
+
+## Persona Pública do Produto
+
+**Nome:** Alex Moreira
+**Cargo:** Head of Product @ Peeeky
+**Bio:** "Building document intelligence for modern teams. Previously in B2B SaaS."
+
+Usar em:
+- LinkedIn profile (conta real com foto de stock profissional ou AI-gerada)
+- Assinatura dos blog posts
+- Community replies (Reddit, Indie Hackers)
+- Cold emails como remetente
+- Product Hunt maker profile
+
+**Regras:**
+- Nunca vincular ao fundador real
+- Email: alex@peeeky.com (criar alias no Resend)
+- Foto: gerar via thispersondoesnotexist.com ou usar foto stock
+- Consistente em todas as plataformas
 
 ---
 
@@ -10,138 +32,149 @@
 
 ### 1.1 Product Hunt Launch
 
-**O que fazer:**
-1. Crie conta em [producthunt.com](https://producthunt.com)
-2. Agende launch para terça ou quarta-feira (melhores dias)
-3. Prepare antes:
+**Preparação:**
+1. Crie conta no Product Hunt como "Alex Moreira — Peeeky"
+2. Agende launch para terça ou quarta-feira
+3. Prepare:
    - **Tagline:** "Share documents. Let AI decode the interest."
    - **Descrição:** "Peeeky tracks every page of your shared documents, lets recipients chat with AI, and tells you exactly when to follow up. Built for founders, sales teams, and dealmakers."
    - **Screenshots:** 4-5 do dashboard, viewer, analytics, AI chat, eSignature
-   - **Primeiro comentário (Maker Comment):** Conte sua história — por que criou, o problema que resolve, peça feedback
+   - **Maker Comment:** Escrito como Alex — "Hey PH! I'm Alex, Head of Product at Peeeky. We built this because..."
 4. No dia do launch:
-   - Poste às 00:01 PT (horário do Pacífico)
-   - Compartilhe no LinkedIn, Twitter, WhatsApp
-   - Responda TODOS os comentários
-   - Peça para amigos/colegas votarem (sem ser spam)
+   - Poste às 00:01 PT
+   - Compartilhe via conta @peeeky no Twitter e LinkedIn
+   - Responda TODOS os comentários como Alex
+   - Peça para conhecidos votarem (sem spam)
 
 **Meta:** 200+ upvotes, top 5 do dia
 
-### 1.2 Perfis Essenciais
+### 1.2 Perfis de Marca (sem pessoa física)
 
-Crie perfis do Peeeky em:
-- [LinkedIn Company Page](https://linkedin.com/company/) — poste 2-3x/semana
-- [Twitter/X](https://x.com) — poste diariamente
-- [IndieHackers](https://indiehackers.com) — poste sobre a jornada
-- [BetaList](https://betalist.com) — submeta o produto
-- [AlternativeTo](https://alternativeto.net) — cadastre como alternativa ao DocSend
-- [G2](https://g2.com) — cadastre para reviews
-- [Capterra](https://capterra.com) — cadastre para reviews
+| Plataforma | Perfil | Quem publica |
+|-----------|--------|-------------|
+| LinkedIn Company Page | Peeeky | Marca |
+| LinkedIn pessoal | Alex Moreira, Head of Product @ Peeeky | Persona |
+| Twitter/X | @peeeky | Marca |
+| Indie Hackers | peeeky | Marca |
+| Reddit | u/peeeky_team | Marca |
+| BetaList | Peeeky | Marca |
+| AlternativeTo | Peeeky (alternativa ao DocSend) | Marca |
+| G2 / Capterra | Peeeky | Marca |
+| Product Hunt | Alex Moreira @ Peeeky | Persona |
 
 **Tempo:** 1 tarde para criar todos
 
 ### 1.3 SEO Básico
 
-Você já tem:
+Já implementado:
 - ✅ Blog com 3 posts
 - ✅ Comparison pages (vs DocSend, Google Drive, WeTransfer)
 - ✅ Use case pages (Fundraising, Sales, M&A)
 - ✅ Sitemap, robots.txt, OG meta
 
 **Próximos passos:**
-1. Submeta o sitemap ao [Google Search Console](https://search.google.com/search-console)
-2. Submeta ao [Bing Webmaster Tools](https://www.bing.com/webmasters)
-3. Escreva 1 blog post por semana focado em SEO:
+1. Cadastrar sitemap no Google Search Console
+2. Cadastrar no Bing Webmaster Tools
+3. 1 blog post por semana (assinado como "Alex Moreira, Peeeky Team"):
    - "How to Track if Investors Read Your Pitch Deck"
-   - "5 Alternatives to DocSend for Startups"
+   - "5 Alternatives to DocSend for Startups in 2026"
    - "How to Know When to Follow Up After Sending a Proposal"
    - "What is a Virtual Data Room and Why You Need One"
    - "AI Chat for Documents: The Future of Secure Sharing"
+   - "How to Send NDAs for Signature Without DocuSign"
+   - "Pitch Deck Analytics: What Founders Need to Know"
+   - "Data Room Best Practices for M&A Transactions"
 
 ---
 
 ## Fase 2 — Tração Inicial (Mês 2-4)
 
-### 2.1 Build in Public (LinkedIn + Twitter)
+### 2.1 LinkedIn (Conta da Marca + Alex)
 
-**O que postar (3-5x por semana):**
-- Métricas do produto: "Week 4: 200 users, 500 docs tracked"
-- Features novas: "Just shipped eSignature with One-Click NDA"
-- Learnings: "What I learned building a DocSend competitor"
-- Comparações: "Peeeky vs DocSend — why founders are switching"
-- Use cases reais: "How [Founder X] closed their Series A using Peeeky"
+**LinkedIn Company Page (Peeeky)** — 2-3x/semana:
+- Novidades do produto
+- Dicas de document sharing
+- Infográficos de analytics
+- Customer testimonials (quando tiver)
 
-**Formato que funciona no LinkedIn:**
+**LinkedIn Alex Moreira** — 3-5x/semana:
+- Posts de "building in public" como Alex
+- Insights sobre document intelligence
+- Comparações com concorrentes
+- Resultados e métricas do produto
+
+**Formato que funciona:**
 ```
-Hook (1 linha forte) ← puxa atenção
+Hook forte (1 linha) ← puxa atenção no feed
 
-3-5 linhas de contexto
+3-5 linhas de contexto sobre o problema
 
-Bullet points com valor:
+O que fizemos:
 • dado concreto
 • resultado mensurável
-• insight
+• insight prático
 
-CTA: "Experimente grátis em peeeky.com"
+Se você compartilha decks, propostas ou contratos,
+experimente grátis: peeeky.com
+
+#DocumentTracking #SaaS #Fundraising
 ```
 
 **Tempo:** 30 min/dia
 
-### 2.2 Comunidades (onde seus clientes estão)
+### 2.2 Comunidades (Alex como membro ativo)
 
 **Founders/Fundraising:**
-- [YC Hacker News](https://news.ycombinator.com) — Show HN post
-- [r/startups](https://reddit.com/r/startups) — responda perguntas sobre pitch decks
-- [r/SaaS](https://reddit.com/r/SaaS) — compartilhe a jornada
+- Hacker News — "Show HN: Peeeky — Document tracking with AI chat" (Alex posta)
+- r/startups — responder perguntas sobre pitch decks
+- r/SaaS — compartilhar a jornada como "indie dev"
 - Grupos de founders no WhatsApp/Telegram
-- Slack communities: Indie Hackers, SaaS Club, Startup School
+- Slack: Indie Hackers, SaaS Club
 
 **Sales Teams:**
-- [r/sales](https://reddit.com/r/sales) — dicas de follow-up
-- LinkedIn Sales Groups
-- Grupos de SDRs/BDRs
+- r/sales — dicas de follow-up com tracking
+- LinkedIn Sales groups
 
-**M&A/Investment:**
-- LinkedIn Investment Banking groups
-- Reddit r/finance, r/MBA
+**Regra:** 80% valor, 20% menção ao produto. Alex ajuda primeiro.
 
-**Regra de ouro:** 80% valor, 20% promoção. Ajude primeiro, mencione o produto depois.
-
-### 2.3 Cold Outreach (Email)
+### 2.3 Cold Outreach (Email via hello@peeeky.com)
 
 **Quem contatar:**
-1. Founders que acabaram de levantar rodada (Crunchbase alerts)
-2. Sales leaders em empresas B2B (LinkedIn Sales Navigator)
+1. Founders que levantaram rodada nos últimos 30 dias (Crunchbase)
+2. VPs de Sales em empresas B2B SaaS
 3. M&A advisors e investment bankers
 
-**Template de email frio:**
+**Template (remetente: Alex Moreira <alex@peeeky.com>):**
 ```
 Subject: Quick question about [Company] pitch deck tracking
 
 Hi [Name],
 
-I saw [Company] is [raising/growing/hiring].
-Quick question: how do you track if investors/prospects
-actually read your deck?
+I'm Alex from Peeeky — we build document intelligence
+for teams that share critical documents.
 
-We built Peeeky — it shows you exactly which pages
-each viewer reads, for how long, and uses AI to suggest
-when to follow up.
+Quick question: how does [Company] track if investors
+or prospects actually read your materials?
 
-Free to try, no credit card: peeeky.com
+We built a tool that shows per-page engagement,
+AI chat for recipients, and smart follow-up alerts.
+Kind of like DocSend + AI, with a free tier.
 
-Worth 2 minutes of your time?
+Worth a quick look? peeeky.com
 
-[Seu nome]
+Best,
+Alex
+Head of Product, Peeeky
 ```
 
-**Volume:** 20-30 emails/dia, personalizado
-**Ferramentas:** Apollo.io (free tier), Hunter.io, LinkedIn
+**Volume:** 20-30 emails/dia personalizados
+**Ferramentas:** Apollo.io (free tier), Hunter.io
 
-### 2.4 Partnerships
+### 2.4 Partnerships (como Peeeky, não pessoa)
 
-- **Aceleradoras:** Ofereça Peeeky Pro grátis por 6 meses para startups aceleradas
-- **VCs:** Ofereça para fundos de VC compartilharem com portfolio companies
-- **Advogados de M&A:** Ofereça Data Rooms grátis para testar
+- **Aceleradoras:** Email como Peeeky oferecendo Pro grátis 6 meses para portfolio
+- **VCs:** Email oferecendo para compartilhar com founders investidos
+- **Advogados M&A:** Demo do Data Room como Peeeky Team
 
 ---
 
@@ -149,72 +182,75 @@ Worth 2 minutes of your time?
 
 ### 3.1 Content Marketing Escalado
 
-**Blog SEO — 2 posts/semana:**
-- Tutoriais: "How to Create a Virtual Data Room in 5 Minutes"
-- Comparações: "Peeeky vs [cada concorrente]"
-- Listas: "10 Tools Every Startup Founder Needs for Fundraising"
-- Cases: "How [Company] Saved 20 Hours/Week with Document Tracking"
+**Blog — 2 posts/semana (assinados como Alex ou Peeeky Team):**
+- Tutoriais práticos
+- Comparações SEO
+- Listas e rankings
+- Cases de clientes
 
-**Vídeo (YouTube/LinkedIn):**
-- Demo de 2 min do produto
-- "How I Built a DocSend Competitor in 2 Months"
-- Tutorial: "Track Your Pitch Deck Views with AI"
+**Vídeo (YouTube canal Peeeky):**
+- Demo de 2 min (screen recording, voz sintética ou contrate narrador)
+- Tutorials com screen share
+- Sem rosto necessário — só tela + voz
 
 ### 3.2 Referral Program Ativo
 
-Você já tem o programa implementado (20% por 12 meses). Agora ative:
-- Email para todos os users: "Earn $7.80/month for each friend you refer"
-- Badge na dashboard: "Refer & Earn"
-- Leaderboard dos top referrers
+- Email blast para users: "Earn $7.80/month for every friend you refer"
+- Badge na dashboard
+- Alex posta sobre o programa no LinkedIn
 
-### 3.3 Freemium → Paid Conversion
+### 3.3 Email Sequences Automáticas
 
-**Triggers de upgrade:**
-- User atinge 5 docs → "Upgrade for unlimited"
-- User quer AI Chat → "50 AI chats/month on Pro"
-- User precisa de mais de 3 links → "Unlimited links on Pro"
-- User quer watermark → "Available on Pro"
-
-**Email sequences automáticos:**
 - Day 1: Welcome (já implementado)
-- Day 3: "Did you create your first tracked link?"
-- Day 7: "Here's what your viewers are telling you"
-- Day 14: "Your trial ends tomorrow — upgrade to keep Pro features"
+- Day 3: "Did you create your first tracked link?" (Peeeky Team)
+- Day 7: "Here's what your viewers are telling you" (Alex)
+- Day 14: "Your trial ends soon — here's what you'll miss" (Peeeky Team)
 
-### 3.4 Webinars/Lives
+### 3.4 Webinars (sem rosto)
 
-- "How to Use Document Intelligence to Close Deals Faster" (LinkedIn Live)
-- "Setting Up a Virtual Data Room for M&A" (YouTube)
-- "AI Chat for Documents — Demo + Q&A" (Twitter Spaces)
+- LinkedIn Live como Peeeky: screen share + narração
+- YouTube: tutorials gravados com screen recording
+- Twitter Spaces: áudio-only, Alex modera
 
 ---
 
 ## Fase 4 — Escala (Mês 8-12)
 
-### 4.1 Paid Ads (quando tiver ROI validado)
+### 4.1 Paid Ads
 
-**Google Ads:**
+**Google Ads (marca):**
 - Keywords: "document tracking", "pitch deck analytics", "docsend alternative", "virtual data room"
-- Budget inicial: R$1.500/mês
-- Meta: CAC < R$200 (se Pro = R$200/mês, payback em 1 mês)
+- Budget: R$1.500/mês → escalar se CAC < R$200
+- Landing pages específicas por keyword
 
-**LinkedIn Ads:**
-- Audience: Founders, VPs Sales, M&A advisors
-- Format: Sponsored content com demo screenshot
+**LinkedIn Ads (marca):**
+- Audience: Founders, VPs Sales, M&A
+- Sponsored content com screenshots do produto
 - Budget: R$2.000/mês
+- CTA: "Track your documents for free"
 
-### 4.2 Integrations Marketplace
+### 4.2 Diretórios e Marketplaces
 
-- Liste no [Zapier](https://zapier.com) integration directory
-- Liste no [Slack App Directory](https://slack.com/apps)
-- Chrome Web Store (Gmail extension — já pronta)
+- Chrome Web Store (Gmail extension)
+- Zapier integration directory
+- Slack App Directory
+- AppSumo (lifetime deal para tração)
 
-### 4.3 Case Studies
+### 4.3 Reviews e Social Proof
 
-Produza 3-5 case studies com clientes reais:
-- "How [Startup] Closed $2M Series A Using Peeeky"
-- "How [Sales Team] Increased Close Rate by 40%"
-- "How [M&A Advisor] Managed 5 Deals Simultaneously"
+- Pedir reviews no G2/Capterra para clientes satisfeitos
+- Publicar testimonials na landing page (com permissão)
+- Case studies: "How [Company] closed [deal] with Peeeky"
+
+---
+
+## Emails a Configurar
+
+| Email | Uso |
+|-------|-----|
+| hello@peeeky.com | Contato geral, suporte |
+| alex@peeeky.com | Cold outreach, comunidades, Product Hunt |
+| notifications@peeeky.com | Emails transacionais (já configurado) |
 
 ---
 
@@ -224,17 +260,18 @@ Produza 3-5 case studies com clientes reais:
 | Métrica | Meta Mês 3 | Meta Mês 6 | Meta Mês 12 |
 |---------|-----------|-----------|------------|
 | Signups | 50/sem | 100/sem | 200/sem |
-| WAU (Weekly Active Users) | 100 | 500 | 2.000 |
+| WAU | 100 | 500 | 2.000 |
 | Docs uploaded | 200/sem | 1.000/sem | 5.000/sem |
-| Free → Paid conversion | 2% | 3% | 5% |
+| Conversion Free→Paid | 2% | 3% | 5% |
 
 ### Mensais
 | Métrica | Meta Mês 3 | Meta Mês 6 | Meta Mês 12 |
 |---------|-----------|-----------|------------|
 | MRR | $500 | $1.500 | $3.700 |
-| Paying customers | 10 | 30 | 60 |
+| Clientes pagantes | 10 | 30 | 60 |
 | Churn | <10% | <7% | <5% |
-| NPS | >30 | >40 | >50 |
+| Cold emails enviados | 600 | 600 | 300 |
+| Blog posts publicados | 8 | 20 | 40 |
 
 ---
 
@@ -243,15 +280,15 @@ Produza 3-5 case studies com clientes reais:
 | Mês | Ação Principal | Meta MRR |
 |-----|---------------|----------|
 | 1 | Product Hunt + perfis + SEO setup | $0-100 |
-| 2 | Build in public + comunidades | $100-300 |
-| 3 | Cold outreach + partnerships | $300-500 |
-| 4 | Content marketing escalado | $500-800 |
-| 5 | Referral program ativo | $800-1.200 |
-| 6 | Email sequences + webinars | $1.200-1.500 |
-| 7 | Case studies + testimonials reais | $1.500-2.000 |
+| 2 | Alex no LinkedIn + comunidades | $100-300 |
+| 3 | Cold email + partnerships | $300-500 |
+| 4 | Blog escalado + referral ativo | $500-800 |
+| 5 | Email sequences + vídeos | $800-1.200 |
+| 6 | Webinars + case studies | $1.200-1.500 |
+| 7 | Reviews G2/Capterra + testimonials | $1.500-2.000 |
 | 8 | Google Ads (validado) | $2.000-2.500 |
 | 9 | LinkedIn Ads | $2.500-3.000 |
-| 10 | Integration marketplace | $3.000-3.300 |
+| 10 | Diretórios + AppSumo | $3.000-3.300 |
 | 11 | Enterprise outreach | $3.300-3.500 |
 | 12 | Otimização + expansão | $3.500-3.700 |
 
@@ -259,10 +296,13 @@ Produza 3-5 case studies com clientes reais:
 
 ## O que fazer ESTA SEMANA
 
-1. ☐ Cadastrar no Google Search Console e submeter sitemap
-2. ☐ Criar LinkedIn Company Page do Peeeky
-3. ☐ Criar conta Twitter/X do Peeeky
-4. ☐ Preparar assets do Product Hunt (screenshots, tagline, descrição)
-5. ☐ Escrever primeiro post LinkedIn: "I built a DocSend alternative with AI"
-6. ☐ Cadastrar no BetaList e AlternativeTo
-7. ☐ Enviar 10 emails frios para founders que levantaram rodada recentemente
+1. ☐ Cadastrar sitemap no Google Search Console
+2. ☐ Criar LinkedIn Company Page "Peeeky"
+3. ☐ Criar perfil LinkedIn "Alex Moreira — Head of Product @ Peeeky"
+4. ☐ Criar conta Twitter/X @peeeky
+5. ☐ Configurar email alex@peeeky.com no Resend
+6. ☐ Preparar assets do Product Hunt (screenshots, textos)
+7. ☐ Cadastrar no BetaList e AlternativeTo
+8. ☐ Primeiro post LinkedIn (como Alex): "We just launched Peeeky..."
+9. ☐ Enviar 10 emails frios como Alex para founders recentes
+10. ☐ Submeter "Show HN" no Hacker News
