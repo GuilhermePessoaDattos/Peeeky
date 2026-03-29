@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/modules/auth/auth";
-import { getSignedPdfUrl } from "@/modules/esignature";
+import { getSignatureRequest, getSignedPdfUrl } from "@/modules/esignature";
 
 export async function GET(
   req: NextRequest,
@@ -12,8 +12,14 @@ export async function GET(
   }
 
   const { id } = await params;
-  const url = await getSignedPdfUrl(id);
 
+  // Verify ownership
+  const request = await getSignatureRequest(id);
+  if (!request || request.orgId !== session.user.orgId) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const url = await getSignedPdfUrl(id);
   if (!url) {
     return NextResponse.json({ error: "Signed PDF not available" }, { status: 404 });
   }

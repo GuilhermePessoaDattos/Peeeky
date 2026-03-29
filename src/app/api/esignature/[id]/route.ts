@@ -14,11 +14,10 @@ export async function GET(
 
   const { id } = await params;
   const request = await getSignatureRequest(id);
-  if (!request) {
+  if (!request || request.orgId !== session.user.orgId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Include signed PDF URL for the editor
   let pdfUrl = null;
   if (request.document?.fileUrl) {
     pdfUrl = await getSignedViewUrl(request.document.fileUrl);
@@ -37,6 +36,11 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  const request = await getSignatureRequest(id);
+  if (!request || request.orgId !== session.user.orgId) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   await cancelSignatureRequest(id);
   return NextResponse.json({ ok: true });
 }

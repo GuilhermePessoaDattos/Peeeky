@@ -17,6 +17,15 @@ export async function GET(
   }
 
   const { id } = await params;
+
+  // Verify document belongs to org
+  const doc = await prisma.document.findFirst({
+    where: { id, orgId: session.user.orgId },
+  });
+  if (!doc) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const requests = await prisma.fileRequest.findMany({
     where: { documentId: id },
     orderBy: { createdAt: "desc" },

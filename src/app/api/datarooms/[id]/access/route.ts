@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/modules/auth/auth";
+import { prisma } from "@/lib/prisma";
 import {
   setDataRoomAccess,
   removeDataRoomAccess,
   getDataRoomAccessRules,
 } from "@/modules/datarooms";
+
+async function verifyRoomOwnership(roomId: string, orgId: string) {
+  const room = await prisma.dataRoom.findFirst({ where: { id: roomId, orgId } });
+  return !!room;
+}
 
 export async function GET(
   req: NextRequest,
@@ -16,6 +22,10 @@ export async function GET(
   }
 
   const { id } = await params;
+  if (!(await verifyRoomOwnership(id, session.user.orgId))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const rules = await getDataRoomAccessRules(id);
   return NextResponse.json(rules);
 }
@@ -30,13 +40,13 @@ export async function POST(
   }
 
   const { id } = await params;
-  const { email, documentIds } = await req.json();
+  if (!(await verifyRoomOwnership(id, session.user.orgId))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
+  const { email, documentIds } = await req.json();
   if (!email || !Array.isArray(documentIds)) {
-    return NextResponse.json(
-      { error: "email and documentIds[] required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "email and documentIds[] required" }, { status: 400 });
   }
 
   const rule = await setDataRoomAccess(id, email, documentIds);
@@ -53,8 +63,11 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  const { email } = await req.json();
+  if (!(await verifyRoomOwnership(id, session.user.orgId))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
+  const { email } = await req.json();
   if (!email) {
     return NextResponse.json({ error: "email required" }, { status: 400 });
   }

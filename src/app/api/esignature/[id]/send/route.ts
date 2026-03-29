@@ -16,6 +16,12 @@ export async function POST(
 
   const { id } = await params;
 
+  // Verify ownership
+  const check = await getSignatureRequest(id);
+  if (!check || check.orgId !== session.user.orgId) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   try {
     const updated = await sendSignatureRequest(id);
     const request = await getSignatureRequest(id);

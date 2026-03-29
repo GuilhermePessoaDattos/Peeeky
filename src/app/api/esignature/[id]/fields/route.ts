@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/modules/auth/auth";
 import { prisma } from "@/lib/prisma";
-import { addSignatureField, removeSignatureField } from "@/modules/esignature";
+import { addSignatureField, removeSignatureField, getSignatureRequest } from "@/modules/esignature";
+
+async function verifyOwnership(id: string, orgId: string) {
+  const req = await getSignatureRequest(id);
+  return req && req.orgId === orgId;
+}
 
 export async function POST(
   req: NextRequest,
@@ -13,8 +18,11 @@ export async function POST(
   }
 
   const { id } = await params;
-  const body = await req.json();
+  if (!(await verifyOwnership(id, session.user.orgId))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
+  const body = await req.json();
   const field = await addSignatureField(id, {
     type: body.type,
     pageNumber: body.pageNumber,
@@ -29,11 +37,18 @@ export async function POST(
   return NextResponse.json(field);
 }
 
-// Update field position (drag)
-export async function PATCH(req: NextRequest) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await auth();
   if (!session?.user?.orgId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  if (!(await verifyOwnership(id, session.user.orgId))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const { fieldId, x, y } = await req.json();
@@ -49,10 +64,18 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(req: NextRequest) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await auth();
   if (!session?.user?.orgId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  if (!(await verifyOwnership(id, session.user.orgId))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const { fieldId } = await req.json();
