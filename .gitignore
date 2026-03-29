@@ -16,3 +16,4 @@ next-env.d.ts
 !src/**/*.png
 !public/**/*.png
 !extensions/**/*.png
+test-results/
