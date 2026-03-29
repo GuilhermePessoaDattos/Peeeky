@@ -167,7 +167,7 @@ function DataRoomIllustration() {
 const features = [
   {
     title: "Page-level analytics",
-    description: "See exactly which pages each viewer reads, how long they spend, and where they drop off. Heatmaps reveal engagement intensity across every page.",
+    description: "See exactly which pages each viewer reads, how long they spend, and where they drop off. Heatmaps reveal engagement intensity. Export as CSV. Detect forwarded documents.",
     icon: BarChart3,
     span: "md:col-span-2",
     accent: "#6C5CE7",
@@ -175,7 +175,7 @@ const features = [
   },
   {
     title: "AI Chat",
-    description: "Recipients ask questions and get instant answers from your document. You see every question — revealing exactly what they care about.",
+    description: "Recipients ask questions and get instant answers from your document. You see every question in the chat log — revealing exactly what they care about.",
     icon: Sparkles,
     span: "md:col-span-1",
     accent: "#a78bfa",
@@ -183,23 +183,23 @@ const features = [
   },
   {
     title: "Smart alerts",
-    description: "Get notified the moment someone views your document. High-engagement alerts include AI-suggested follow-up actions.",
+    description: "Real-time notifications when someone views. High-engagement alerts with AI-suggested follow-up actions. Email + Slack.",
     icon: Zap,
     span: "md:col-span-1",
     accent: "#f59e0b",
     Illustration: AlertsIllustration,
   },
   {
-    title: "Access controls",
-    description: "Password protection, email verification, expiration dates, download control, and watermarking per viewer. Your documents, your rules.",
+    title: "Access controls & NDA",
+    description: "Password, email verification, expiration, watermarking, download control, and one-click NDA gate. Require legal agreement before viewing.",
     icon: Lock,
     span: "md:col-span-1",
     accent: "#10b981",
     Illustration: AccessIllustration,
   },
   {
-    title: "Data Rooms",
-    description: "Bundle documents into a single secure link with per-viewer permissions. Built for M&A, fundraising, and due diligence processes.",
+    title: "Data Rooms with folders",
+    description: "Organize documents into folders within secure Data Rooms. Per-viewer permissions, granular access control, and analytics per party. Built for M&A and due diligence.",
     icon: FolderOpen,
     span: "md:col-span-2",
     accent: "#6C5CE7",

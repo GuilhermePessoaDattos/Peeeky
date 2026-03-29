@@ -31,7 +31,15 @@ const faqs = [
   },
   {
     q: "Is there a free plan?",
-    a: "Absolutely. The Free plan lets you upload up to 5 documents, create trackable links, use AI Chat (10 questions/month), and see basic page analytics — forever, no credit card required. When you're ready for heatmaps, advanced access controls, and more AI Chat, you can upgrade to Pro at any time.",
+    a: "Absolutely. The Free plan includes 5 documents, AI Chat (10/month), eSignature, basic analytics, and password protection — forever, no credit card required.",
+  },
+  {
+    q: "Does Peeeky support eSignature?",
+    a: "Yes. Send documents for electronic signature with visual field placement, multiple signers, and One-Click NDA. Signatures are burned into the final PDF with a cryptographic audit trail. Save field layouts as templates for reuse.",
+  },
+  {
+    q: "Can I organize documents in Data Rooms?",
+    a: "Yes. Data Rooms support folders for organizing documents. Set per-viewer permissions so each party sees only what they should. Full analytics per party and document — built for M&A and due diligence.",
   },
 ];
 

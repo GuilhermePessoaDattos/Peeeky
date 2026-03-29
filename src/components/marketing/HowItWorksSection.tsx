@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Upload, Eye, Bell } from "lucide-react";
+import { Upload, Eye, Bell, PenTool } from "lucide-react";
 
 const steps = [
   {
@@ -21,6 +21,12 @@ const steps = [
     title: "Act at the right moment",
     description:
       "Receive instant notifications with AI-powered follow-up suggestions. Reach out exactly when interest is highest — and close faster.",
+  },
+  {
+    icon: PenTool,
+    title: "Get it signed",
+    description:
+      "Send documents for eSignature with one click. Multiple signers, visual field placement, and signed PDFs — all with a tamper-proof audit trail.",
   },
 ];
 
@@ -53,9 +59,9 @@ export function HowItWorksSection() {
         </div>
 
         <div className="relative max-w-4xl mx-auto">
-          <div className="hidden md:block absolute top-12 left-[10%] right-[10%] h-0.5 bg-[#e5e7eb] z-0" />
+          <div className="hidden md:block absolute top-12 left-[8%] right-[8%] h-0.5 bg-[#e5e7eb] z-0" />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 relative z-10">
             {steps.map((step, i) => (
               <motion.div
                 key={i}

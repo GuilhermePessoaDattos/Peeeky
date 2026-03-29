@@ -33,12 +33,12 @@ export function CtaSection() {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 text-white">
-            Document intelligence for{" "}
-            <span className="text-[#a78bfa]">people who share to win.</span>
+            Share, track, sign —{" "}
+            <span className="text-[#a78bfa]">all in one place.</span>
           </h2>
           <p className="text-xl text-white/70 mb-10 max-w-2xl mx-auto">
-            Join thousands of founders, sales teams, and dealmakers already using
-            Peeeky to close faster with confidence.
+            Analytics, AI Chat, eSignature, and Data Rooms. Everything teams need
+            to share documents with confidence and close faster.
           </p>
 
           {submitted ? (
