@@ -94,6 +94,17 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
+  // Verify file request belongs to org
+  const fileRequest = await prisma.fileRequest.findFirst({
+    where: {
+      id: requestId,
+      document: { orgId: session.user.orgId },
+    },
+  });
+  if (!fileRequest) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   await prisma.fileRequest.update({
     where: { id: requestId },
     data: { status },
