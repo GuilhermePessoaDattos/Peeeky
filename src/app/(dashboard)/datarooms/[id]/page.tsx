@@ -198,6 +198,9 @@ export default function DataRoomDetailPage({ params }: { params: Promise<{ id: s
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"documents" | "analytics">("documents");
+  const [folders, setFolders] = useState<{ id: string; name: string; order: number; documents: any[] }[]>([]);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [showNewFolder, setShowNewFolder] = useState(false);
 
   const fetchRoom = useCallback(async () => {
     try {
@@ -214,6 +217,47 @@ export default function DataRoomDetailPage({ params }: { params: Promise<{ id: s
   useEffect(() => {
     fetchRoom();
   }, [fetchRoom]);
+
+  const fetchFolders = useCallback(() => {
+    fetch(`/api/datarooms/${id}/folders`).then(r => r.json()).then(data => {
+      setFolders(Array.isArray(data) ? data : []);
+    }).catch(() => {});
+  }, [id]);
+
+  useEffect(() => { fetchFolders(); }, [fetchFolders]);
+
+  const createFolder = async () => {
+    if (!newFolderName.trim()) return;
+    await fetch(`/api/datarooms/${id}/folders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newFolderName.trim() }),
+    });
+    setNewFolderName("");
+    setShowNewFolder(false);
+    fetchFolders();
+  };
+
+  const deleteFolder = async (folderId: string) => {
+    if (!confirm("Delete this folder? Documents will be moved to root.")) return;
+    await fetch(`/api/datarooms/${id}/folders`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folderId }),
+    });
+    fetchFolders();
+    fetchRoom();
+  };
+
+  const moveToFolder = async (documentId: string, folderId: string | null) => {
+    await fetch(`/api/datarooms/${id}/folders`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId, folderId }),
+    });
+    fetchFolders();
+    fetchRoom();
+  };
 
   const fetchOrgDocs = async () => {
     setLoadingDocs(true);
@@ -382,13 +426,77 @@ export default function DataRoomDetailPage({ params }: { params: Promise<{ id: s
         <h2 className="font-display text-lg font-semibold text-[#1A1A2E]">
           Documents ({room.documents.length})
         </h2>
-        <button
-          onClick={() => { setShowAddDoc(true); fetchOrgDocs(); }}
-          className="rounded-lg bg-[#6C5CE7] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6C5CE7]/90"
-        >
-          + Add Document
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowNewFolder(!showNewFolder)}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
+          >
+            + Folder
+          </button>
+          <button
+            onClick={() => { setShowAddDoc(true); fetchOrgDocs(); }}
+            className="rounded-lg bg-[#6C5CE7] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6C5CE7]/90"
+          >
+            + Add Document
+          </button>
+        </div>
       </div>
+
+      {/* New folder form */}
+      {showNewFolder && (
+        <div className="mb-4 flex items-center gap-2">
+          <input
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            placeholder="Folder name..."
+            className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#6C5CE7]"
+            onKeyDown={(e) => e.key === "Enter" && createFolder()}
+          />
+          <button onClick={createFolder} disabled={!newFolderName.trim()} className="rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 disabled:opacity-40">Create</button>
+          <button onClick={() => setShowNewFolder(false)} className="text-xs text-gray-400">Cancel</button>
+        </div>
+      )}
+
+      {/* Folders */}
+      {folders.length > 0 && (
+        <div className="mb-4 space-y-3">
+          {folders.map((folder) => (
+            <div key={folder.id} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <svg className="h-4 w-4 text-[#6C5CE7]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                  </svg>
+                  <span className="text-sm font-semibold text-[#1A1A2E]">{folder.name}</span>
+                  <span className="text-xs text-gray-400">{folder.documents.length} doc{folder.documents.length !== 1 ? "s" : ""}</span>
+                </div>
+                <button onClick={() => deleteFolder(folder.id)} className="text-xs text-gray-400 hover:text-red-500">Delete</button>
+              </div>
+              {folder.documents.length > 0 && (
+                <div className="divide-y divide-gray-50">
+                  {folder.documents.map((d: any) => (
+                    <div key={d.id} className="flex items-center justify-between px-4 py-2.5">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm">{d.document.fileType === "PDF" ? "\u{1F4C4}" : "\u{1F4CA}"}</span>
+                        <span className="text-sm font-medium text-[#1A1A2E]">{d.document.name}</span>
+                      </div>
+                      <button
+                        onClick={() => moveToFolder(d.document.id, null)}
+                        className="text-[10px] text-gray-400 hover:text-[#6C5CE7]"
+                      >
+                        Move to root
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {folder.documents.length === 0 && (
+                <p className="px-4 py-3 text-xs text-gray-400">Empty folder. Drag documents here or use the move button.</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Add document dropdown */}
       {showAddDoc && (
@@ -446,12 +554,26 @@ export default function DataRoomDetailPage({ params }: { params: Promise<{ id: s
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => handleRemoveDoc(d.document.id)}
-                className="text-xs text-gray-400 hover:text-red-500"
-              >
-                Remove
-              </button>
+              <div className="flex items-center gap-2">
+                {folders.length > 0 && (
+                  <select
+                    defaultValue=""
+                    onChange={(e) => { if (e.target.value) moveToFolder(d.document.id, e.target.value); }}
+                    className="rounded border border-gray-200 px-2 py-1 text-[10px] text-gray-500 outline-none"
+                  >
+                    <option value="">Move to folder...</option>
+                    {folders.map((f) => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))}
+                  </select>
+                )}
+                <button
+                  onClick={() => handleRemoveDoc(d.document.id)}
+                  className="text-xs text-gray-400 hover:text-red-500"
+                >
+                  Remove
+                </button>
+              </div>
             </div>
           ))}
         </div>

@@ -79,8 +79,10 @@ export async function getDataRoomBySlug(slug: string) {
           document: {
             select: { id: true, name: true, fileType: true, fileUrl: true, pageCount: true },
           },
+          folder: { select: { id: true, name: true } },
         },
       },
+      folders: { orderBy: { order: "asc" } },
       org: { select: { name: true, logoUrl: true } },
     },
   });

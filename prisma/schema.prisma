@@ -118,6 +118,7 @@ model DataRoom {
 
   org         Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
   documents   DataRoomDocument[]
+  folders     DataRoomFolder[]
   accessRules DataRoomAccess[]
 
   @@index([orgId])
@@ -135,15 +136,30 @@ model DataRoomAccess {
   @@unique([dataRoomId, email])
 }
 
+model DataRoomFolder {
+  id         String   @id @default(cuid())
+  dataRoomId String
+  name       String
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  dataRoom  DataRoom           @relation(fields: [dataRoomId], references: [id], onDelete: Cascade)
+  documents DataRoomDocument[]
+
+  @@index([dataRoomId])
+}
+
 model DataRoomDocument {
   id         String   @id @default(cuid())
   dataRoomId String
   documentId String
+  folderId   String?
   order      Int      @default(0)
   createdAt  DateTime @default(now())
 
-  dataRoom DataRoom @relation(fields: [dataRoomId], references: [id], onDelete: Cascade)
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  dataRoom DataRoom         @relation(fields: [dataRoomId], references: [id], onDelete: Cascade)
+  document Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  folder   DataRoomFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   @@unique([dataRoomId, documentId])
 }
