@@ -60,7 +60,7 @@ export async function getLinkBySlug(slug: string) {
     include: {
       document: {
         include: {
-          org: { select: { name: true, logoUrl: true, brandColor: true, plan: true } },
+          org: { select: { name: true, logoUrl: true, brandColor: true, plan: true, suspended: true } },
         },
       },
     },

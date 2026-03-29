@@ -18,6 +18,19 @@ export default async function ViewerPage({
     notFound();
   }
 
+  // Check if org is suspended
+  if (link.document.org?.suspended) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#1A1A2E]">
+        <div className="rounded-2xl bg-white p-8 text-center max-w-sm">
+          <div className="mb-4 text-4xl">&#128683;</div>
+          <h1 className="text-xl font-bold text-[#1A1A2E]">Temporarily Unavailable</h1>
+          <p className="mt-2 text-sm text-gray-500">This document is temporarily unavailable. Please contact the sender.</p>
+        </div>
+      </div>
+    );
+  }
+
   // Check expiry
   if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
     return (

@@ -25,6 +25,8 @@ export default function AdminOrganizations() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkActing, setBulkActing] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -34,6 +36,40 @@ export default function AdminOrganizations() {
       .then((r) => r.json())
       .then((data) => { setOrgs(Array.isArray(data) ? data : []); setLoading(false); });
   }, [filter, search]);
+
+  const toggleSelect = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelected(next);
+  };
+
+  const selectAll = () => {
+    if (selected.size === orgs.length) setSelected(new Set());
+    else setSelected(new Set(orgs.map(o => o.id)));
+  };
+
+  const bulkAction = async (action: string, extra?: any) => {
+    if (!confirm(`Apply "${action}" to ${selected.size} orgs?`)) return;
+    setBulkActing(true);
+    for (const orgId of selected) {
+      if (action === "suspend") {
+        await fetch(`/api/admin/organizations/${orgId}/suspend`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: "Bulk action" }) });
+      } else if (action === "unsuspend") {
+        await fetch(`/api/admin/organizations/${orgId}/unsuspend`, { method: "POST" });
+      } else if (action === "changePlan") {
+        await fetch(`/api/admin/organizations/${orgId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan: extra }) });
+      } else if (action === "extendTrial") {
+        await fetch(`/api/admin/organizations/${orgId}/extend-trial`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ days: 14 }) });
+      }
+    }
+    setSelected(new Set());
+    setBulkActing(false);
+    // Refresh
+    const params = new URLSearchParams();
+    if (filter !== "ALL") params.set("plan", filter);
+    if (search) params.set("search", search);
+    fetch(`/api/admin/organizations?${params}`).then(r => r.json()).then(data => setOrgs(Array.isArray(data) ? data : []));
+  };
 
   return (
     <div>
@@ -62,6 +98,20 @@ export default function AdminOrganizations() {
         </div>
       </div>
 
+      {/* Bulk actions */}
+      {selected.size > 0 && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl bg-[#6C5CE7]/10 border border-[#6C5CE7]/20 px-4 py-3">
+          <span className="text-xs text-[#6C5CE7] font-semibold">{selected.size} selected</span>
+          <div className="flex gap-1 ml-auto">
+            <button onClick={() => bulkAction("suspend")} disabled={bulkActing} className="rounded-lg bg-red-600 px-3 py-1.5 text-[10px] font-semibold text-white disabled:opacity-50">Suspend All</button>
+            <button onClick={() => bulkAction("unsuspend")} disabled={bulkActing} className="rounded-lg bg-green-600 px-3 py-1.5 text-[10px] font-semibold text-white disabled:opacity-50">Unsuspend All</button>
+            <button onClick={() => bulkAction("changePlan", "PRO")} disabled={bulkActing} className="rounded-lg bg-[#6C5CE7] px-3 py-1.5 text-[10px] font-semibold text-white disabled:opacity-50">Set Pro</button>
+            <button onClick={() => bulkAction("changePlan", "FREE")} disabled={bulkActing} className="rounded-lg bg-white/10 px-3 py-1.5 text-[10px] font-semibold text-white disabled:opacity-50">Set Free</button>
+            <button onClick={() => bulkAction("extendTrial")} disabled={bulkActing} className="rounded-lg bg-blue-600 px-3 py-1.5 text-[10px] font-semibold text-white disabled:opacity-50">+14d Trial</button>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <p className="text-white/30 text-sm">Loading...</p>
       ) : (
@@ -69,7 +119,8 @@ export default function AdminOrganizations() {
           <table className="w-full text-sm">
             <thead className="border-b border-white/10 bg-white/5">
               <tr className="text-white/40 text-xs uppercase tracking-wider">
-                <th className="px-5 py-3 text-left font-medium">Organization</th>
+                <th className="px-5 py-3 text-left font-medium w-8"><input type="checkbox" checked={selected.size === orgs.length && orgs.length > 0} onChange={selectAll} className="rounded" /></th>
+              <th className="px-5 py-3 text-left font-medium">Organization</th>
                 <th className="px-5 py-3 text-left font-medium">Plan</th>
                 <th className="px-5 py-3 text-left font-medium">Members</th>
                 <th className="px-5 py-3 text-left font-medium">Docs</th>
@@ -80,6 +131,7 @@ export default function AdminOrganizations() {
             <tbody>
               {orgs.map((org) => (
                 <tr key={org.id} className="border-b border-white/5 hover:bg-white/5 transition">
+                  <td className="px-5 py-3"><input type="checkbox" checked={selected.has(org.id)} onChange={() => toggleSelect(org.id)} className="rounded" /></td>
                   <td className="px-5 py-3">
                     <Link href={`/admin/organizations/${org.id}`} className="text-white font-medium hover:text-[#6C5CE7] transition">
                       {org.name}

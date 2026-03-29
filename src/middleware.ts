@@ -14,7 +14,7 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  const publicPaths = ["/login", "/api/auth", "/api/health", "/api/debug-auth", "/api/track", "/api/links", "/api/webhooks", "/api/ai", "/view", "/vs", "/for", "/room", "/privacy", "/terms", "/blog", "/sign", "/api/esignature/sign", "/api/documents/import-url", "/api/extension"];
+  const publicPaths = ["/login", "/blocked", "/api/auth", "/api/health", "/api/debug-auth", "/api/track", "/api/links", "/api/webhooks", "/api/ai", "/view", "/vs", "/for", "/room", "/privacy", "/terms", "/blog", "/sign", "/api/esignature/sign", "/api/documents/import-url", "/api/extension", "/api/cron"];
   if (publicPaths.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
