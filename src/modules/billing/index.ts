@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { redis } from "@/lib/redis";
 import { activateReferral } from "@/modules/referrals";
 
 const PRICES = {
@@ -210,9 +211,12 @@ export async function handleWebhookEvent(event: Stripe.Event) {
       });
 
       if (org) {
+        // Grace period: schedule downgrade in 3 days instead of immediately
+        const downgradeAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+        await redis.set(`downgrade:${org.id}`, downgradeAt, { ex: 4 * 24 * 60 * 60 }); // 4 day TTL
         await prisma.organization.update({
           where: { id: org.id },
-          data: { plan: "FREE", stripeSubId: null },
+          data: { stripeSubId: null }, // Clear sub ID now, but keep plan
         });
       }
       break;

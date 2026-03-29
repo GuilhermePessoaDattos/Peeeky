@@ -82,6 +82,7 @@ model Document {
   versions       DocumentVersion[]
   fileRequests   FileRequest[]
   signatureRequests SignatureRequest[]
+  chatMessages      ChatMessage[]
 
   @@index([orgId])
 }
@@ -363,6 +364,23 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// ─── AI Chat Log ─────────────────────────────────────────
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  documentId String
+  linkId     String?
+  question   String
+  answer     String
+  viewerEmail String?
+  viewerIp   String?
+  createdAt  DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
 }
 
 // ─── File Requests ────────────────────────────────────────

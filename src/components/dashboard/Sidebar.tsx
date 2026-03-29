@@ -2,12 +2,20 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+
+interface OrgItem {
+  orgId: string;
+  orgName: string;
+  role: string;
+}
 
 interface SidebarProps {
   userName: string;
   userEmail: string;
   plan: string;
+  currentOrgId?: string;
+  orgs?: OrgItem[];
   signOutAction: () => Promise<void>;
 }
 
@@ -60,9 +68,11 @@ const navLinks = [
   },
 ];
 
-export function Sidebar({ userName, userEmail, plan, signOutAction }: SidebarProps) {
+export function Sidebar({ userName, userEmail, plan, currentOrgId, orgs, signOutAction }: SidebarProps) {
   const [open, setOpen] = useState(false);
+  const [showOrgSwitcher, setShowOrgSwitcher] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   const isActive = (href: string) => {
     if (href === "/settings") return pathname === "/settings";
@@ -140,6 +150,46 @@ export function Sidebar({ userName, userEmail, plan, signOutAction }: SidebarPro
           ))}
         </nav>
         <div className="border-t border-gray-200 p-4">
+          {/* Org Switcher */}
+          {orgs && orgs.length > 1 && (
+            <div className="mb-3 relative">
+              <button
+                onClick={() => setShowOrgSwitcher(!showOrgSwitcher)}
+                className="w-full flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-xs hover:bg-gray-50 transition"
+              >
+                <span className="truncate font-medium text-[#1A1A2E]">
+                  {orgs.find(o => o.orgId === currentOrgId)?.orgName || "Workspace"}
+                </span>
+                <svg className={`h-3 w-3 text-gray-400 transition-transform ${showOrgSwitcher ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {showOrgSwitcher && (
+                <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden z-50">
+                  {orgs.map((org) => (
+                    <button
+                      key={org.orgId}
+                      onClick={async () => {
+                        await fetch("/api/auth/switch-org", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ orgId: org.orgId }),
+                        });
+                        setShowOrgSwitcher(false);
+                        router.refresh();
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-gray-50 transition ${
+                        org.orgId === currentOrgId ? "bg-[#6C5CE7]/5 text-[#6C5CE7]" : "text-gray-700"
+                      }`}
+                    >
+                      <span className="truncate font-medium">{org.orgName}</span>
+                      <span className="text-[10px] text-gray-400">{org.role}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="mb-3 text-sm">
             <p className="truncate font-medium text-[#1A1A2E]">
               {userName || userEmail}

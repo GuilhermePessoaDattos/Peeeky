@@ -7,7 +7,7 @@ export async function GET() {
     const session = await auth();
     if (!session?.user?.orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const org = await prisma.org.findUnique({
+    const org = await prisma.organization.findUnique({
       where: { id: session.user.orgId },
       select: { plan: true },
     });

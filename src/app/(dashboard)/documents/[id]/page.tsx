@@ -497,11 +497,14 @@ export default function DocumentDetailPage({
   const [upgradeNeeded, setUpgradeNeeded] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [expandedLink, setExpandedLink] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"links" | "analytics" | "versions" | "files">("links");
+  const [activeTab, setActiveTab] = useState<"links" | "analytics" | "versions" | "files" | "chatlog">("links");
+  const [chatLog, setChatLog] = useState<{ id: string; question: string; answer: string; viewerEmail: string | null; viewerIp: string | null; createdAt: string }[]>([]);
   const [viewingNow, setViewingNow] = useState(0);
   const [versions, setVersions] = useState<{ id: string; version: number; createdAt: string }[]>([]);
   const [fileRequests, setFileRequests] = useState<{ id: string; uploaderEmail: string; fileName: string; status: string; createdAt: string }[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [newName, setNewName] = useState("");
 
   const fetchDocument = useCallback(async () => {
     try {
@@ -541,6 +544,15 @@ export default function DocumentDetailPage({
       .catch(() => {});
   }, [activeTab, id]);
 
+  // Fetch chat log when tab is active
+  useEffect(() => {
+    if (activeTab !== "chatlog") return;
+    fetch(`/api/documents/${id}/chat-log`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setChatLog(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [activeTab, id]);
+
   // Fetch file requests when tab is active
   useEffect(() => {
     if (activeTab !== "files") return;
@@ -573,6 +585,17 @@ export default function DocumentDetailPage({
       body: JSON.stringify({ requestId, status }),
     });
     setFileRequests((prev) => prev.map((r) => r.id === requestId ? { ...r, status } : r));
+  };
+
+  const handleRename = async () => {
+    if (!newName.trim()) { setRenaming(false); return; }
+    await fetch(`/api/documents/${id}/rename`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName.trim() }),
+    });
+    setRenaming(false);
+    fetchDocument();
   };
 
   const createLink = async () => {
@@ -643,7 +666,25 @@ export default function DocumentDetailPage({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="font-display text-2xl font-bold text-[#1A1A2E]">{doc.name}</h1>
+              {renaming ? (
+                <form onSubmit={(e) => { e.preventDefault(); handleRename(); }} className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    onBlur={handleRename}
+                    className="font-display text-2xl font-bold text-[#1A1A2E] border-b-2 border-[#6C5CE7] outline-none bg-transparent"
+                  />
+                </form>
+              ) : (
+                <h1
+                  className="font-display text-2xl font-bold text-[#1A1A2E] cursor-pointer hover:text-[#6C5CE7] transition-colors"
+                  onClick={() => { setNewName(doc.name); setRenaming(true); }}
+                  title="Click to rename"
+                >
+                  {doc.name}
+                </h1>
+              )}
               {viewingNow > 0 && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
                   <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -723,7 +764,7 @@ export default function DocumentDetailPage({
 
       {/* Tabs */}
       <div className="mb-6 flex items-center gap-0 border-b border-gray-200">
-        {(["links", "analytics", "versions", "files"] as const).map((tab) => (
+        {(["links", "analytics", "chatlog", "versions", "files"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -733,7 +774,7 @@ export default function DocumentDetailPage({
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            {tab === "files" ? "File Requests" : tab}
+            {tab === "files" ? "File Requests" : tab === "chatlog" ? "AI Chat Log" : tab}
             {activeTab === tab && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6C5CE7] rounded-full" />
             )}
@@ -848,6 +889,39 @@ export default function DocumentDetailPage({
       )}
 
       {activeTab === "analytics" && <AnalyticsTab documentId={id} pageCount={doc.pageCount} />}
+
+      {/* AI Chat Log Tab */}
+      {activeTab === "chatlog" && (
+        <div>
+          <p className="mb-4 text-sm text-gray-500">Questions asked by viewers via AI Chat.</p>
+          {chatLog.length === 0 ? (
+            <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center">
+              <p className="text-sm text-gray-500">No AI Chat questions yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {chatLog.map((msg) => (
+                <div key={msg.id} className="rounded-xl border border-gray-200 bg-white p-5">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-gray-500">{msg.viewerEmail || msg.viewerIp || "Anonymous"}</span>
+                    </div>
+                    <span className="text-xs text-gray-400">{new Date(msg.createdAt).toLocaleString()}</span>
+                  </div>
+                  <div className="mb-2">
+                    <span className="text-xs font-semibold text-[#6C5CE7] uppercase tracking-wide">Question</span>
+                    <p className="text-sm text-[#1A1A2E] mt-1">{msg.question}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Answer</span>
+                    <p className="text-sm text-gray-600 mt-1 line-clamp-3">{msg.answer}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Versions Tab */}
       {activeTab === "versions" && (

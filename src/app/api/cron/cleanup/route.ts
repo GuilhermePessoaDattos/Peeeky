@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { redis } from "@/lib/redis";
 
 export const maxDuration = 60;
 
@@ -35,11 +36,30 @@ export async function GET(req: NextRequest) {
     },
   });
 
+  // Process grace period downgrades (3-day delay after subscription cancelled)
+  let downgrades = 0;
+  const orgs = await prisma.organization.findMany({
+    where: { plan: { not: "FREE" }, stripeSubId: null },
+    select: { id: true },
+  });
+  for (const org of orgs) {
+    const downgradeAt = await redis.get<string>(`downgrade:${org.id}`);
+    if (downgradeAt && new Date(downgradeAt) <= now) {
+      await prisma.organization.update({
+        where: { id: org.id },
+        data: { plan: "FREE" },
+      });
+      await redis.del(`downgrade:${org.id}`);
+      downgrades++;
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     expiredLinks: expiredLinks.count,
     orphanPageViews: orphanPageViews.count,
     orphanEmbeddings: orphanEmbeddings.count,
+    downgrades,
     timestamp: now.toISOString(),
   });
 }

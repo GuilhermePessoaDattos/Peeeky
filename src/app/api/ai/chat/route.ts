@@ -60,6 +60,17 @@ export async function POST(req: NextRequest) {
     // Increment AI chat counter after successful response
     await incrementAIChat(link.document.orgId);
 
+    // Log chat message for analytics
+    await prisma.chatMessage.create({
+      data: {
+        documentId: link.documentId,
+        linkId: link.id,
+        question,
+        answer: typeof answer === "string" ? answer : JSON.stringify(answer),
+        viewerIp: ip,
+      },
+    }).catch(() => {}); // Don't block response if logging fails
+
     return NextResponse.json({ answer });
   } catch (error) {
     console.error("AI chat error:", error);
