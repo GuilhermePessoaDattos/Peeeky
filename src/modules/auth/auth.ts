@@ -43,6 +43,7 @@ export const {
         data: {
           name: orgName,
           slug,
+          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14-day trial
           members: {
             create: {
               userId: user.id,

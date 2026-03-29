@@ -10,6 +10,7 @@ const adminLinks = [
   { href: "/admin/revenue", label: "Revenue", icon: "💰" },
   { href: "/admin/usage", label: "Usage", icon: "📈" },
   { href: "/admin/referrals", label: "Referrals", icon: "🔗" },
+  { href: "/admin/activity", label: "Activity Log", icon: "📋" },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

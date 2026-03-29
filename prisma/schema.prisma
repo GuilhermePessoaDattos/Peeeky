@@ -18,6 +18,10 @@ model Organization {
   stripeSubId      String?   @unique
   logoUrl          String?
   brandColor       String?   @default("#000000")
+  suspended        Boolean   @default(false)
+  suspendedAt      DateTime?
+  suspendReason    String?
+  trialEndsAt      DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -37,6 +41,10 @@ model User {
   image         String?
   referralCode     String?   @unique
   stripeConnectId  String?   @unique
+  blocked          Boolean   @default(false)
+  blockedAt        DateTime?
+  blockReason      String?
+  lastLoginAt      DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -344,6 +352,19 @@ model SignatureCompletion {
   auditHash          String   // SHA-256 hash of document + fields + timestamp for tamper detection
 
   signatureRequest SignatureRequest @relation(fields: [signatureRequestId], references: [id], onDelete: Cascade)
+}
+
+// ─── Admin Actions ───────────────────────────────────────
+
+model AdminAction {
+  id         String   @id @default(cuid())
+  adminEmail String
+  action     String
+  targetType String
+  targetId   String
+  reason     String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
 }
 
 // ─── Signature Templates ─────────────────────────────────

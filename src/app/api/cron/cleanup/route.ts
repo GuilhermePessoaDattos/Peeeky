@@ -54,12 +54,31 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Expire trials
+  let trialsExpired = 0;
+  const expiredTrials = await prisma.organization.findMany({
+    where: {
+      trialEndsAt: { lt: now },
+      plan: { not: "FREE" },
+      stripeSubId: null,
+    },
+    select: { id: true },
+  });
+  for (const org of expiredTrials) {
+    await prisma.organization.update({
+      where: { id: org.id },
+      data: { plan: "FREE" },
+    });
+    trialsExpired++;
+  }
+
   return NextResponse.json({
     ok: true,
     expiredLinks: expiredLinks.count,
     orphanPageViews: orphanPageViews.count,
     orphanEmbeddings: orphanEmbeddings.count,
     downgrades,
+    trialsExpired,
     timestamp: now.toISOString(),
   });
 }
