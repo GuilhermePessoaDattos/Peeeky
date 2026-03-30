@@ -58,7 +58,7 @@ model Organization {
 }
 ```
 
-- [ ] **Step 2: Run migration**
+- [x] **Step 2: Run migration**
 
 Run: `npx prisma migrate dev --name add-appsumo-license`
 Expected: Migration succeeds, new table `AppSumoLicense` created.
@@ -1932,49 +1932,49 @@ git commit -m "feat: content and reports directory structure"
 **Files:**
 - Configuration via Claude Code `/schedule` skill
 
-- [ ] **Step 1: Create weekly content writer trigger**
+- [x] **Step 1: Create weekly content writer trigger**
 
 Use `/schedule` to create a trigger:
 - Name: `content-writer-weekly`
 - Schedule: Every Sunday at 10:00 UTC
 - Prompt: "Read agents/content-writer/prompt.md and generate 2 blog posts for this week. Use the audience-pain-discoverer and brand-voice-guide-generator skills. Save drafts to content/blog/drafts/"
 
-- [ ] **Step 2: Create weekly social manager trigger**
+- [x] **Step 2: Create weekly social manager trigger**
 
 Use `/schedule` to create a trigger:
 - Name: `social-manager-weekly`
 - Schedule: Every Sunday at 11:00 UTC
 - Prompt: "Read agents/social-manager/prompt.md and generate 5 LinkedIn posts and 5 tweets for this week. Use the blog-to-social-repurposing skill. Save to content/social/drafts/"
 
-- [ ] **Step 3: Create daily community rep trigger**
+- [x] **Step 3: Create daily community rep trigger**
 
 Use `/schedule` to create a trigger:
 - Name: `community-rep-daily`
 - Schedule: Every day at 14:00 UTC
 - Prompt: "Read agents/community-rep/prompt.md. Use firecrawl-search to find relevant threads on Reddit and HN. Draft 3-5 responses. Save to content/community/drafts/"
 
-- [ ] **Step 4: Create daily outbound sales trigger**
+- [ ] **Step 4: Create daily outbound sales trigger** ⚠️ BLOCKED — plan limit (3 triggers max). Upgrade plan or disable one existing trigger.
 
 Use `/schedule` to create a trigger:
 - Name: `outbound-sales-daily`
 - Schedule: Every weekday at 13:00 UTC
 - Prompt: "Read agents/outbound-sales/prompt.md. Use prospect-research-autopilot and firecrawl-search to find 25 leads. Draft personalized emails. Save to content/outbound/drafts/"
 
-- [ ] **Step 5: Create daily GitHub maintainer trigger**
+- [ ] **Step 5: Create daily GitHub maintainer trigger** ⚠️ BLOCKED — plan limit (3 triggers max)
 
 Use `/schedule` to create a trigger:
 - Name: `github-maintainer-daily`
 - Schedule: Every day at 09:00 UTC
 - Prompt: "Read agents/github-maintainer/prompt.md. Check peeeky/peeeky-js and peeeky/viewer repos for new issues, PRs, and discussions. Triage and respond."
 
-- [ ] **Step 6: Create weekly analytics reporter trigger**
+- [ ] **Step 6: Create weekly analytics reporter trigger** ⚠️ BLOCKED — plan limit (3 triggers max)
 
 Use `/schedule` to create a trigger:
 - Name: `analytics-reporter-weekly`
 - Schedule: Every Monday at 08:00 UTC
 - Prompt: "Read agents/analytics-reporter/prompt.md. Pull data from Stripe, Vercel, GitHub, and database. Generate weekly report and save to reports/weekly/"
 
-- [ ] **Step 7: Commit trigger configurations**
+- [x] **Step 7: Commit trigger configurations** (3/6 triggers created — content-writer, social-manager, community-rep)
 
 ```bash
 git add -A
@@ -2417,7 +2417,7 @@ model GtmAgentRun {
 }
 ```
 
-- [ ] **Step 2: Run migration**
+- [x] **Step 2: Run migration**
 
 Run: `npx prisma migrate dev --name add-gtm-dashboard-models`
 Expected: Migration succeeds, 4 new tables created.
@@ -2637,7 +2637,7 @@ main()
   .finally(() => prisma.$disconnect());
 ```
 
-- [ ] **Step 2: Run seed**
+- [x] **Step 2: Run seed**
 
 Run: `npx tsx scripts/seed-gtm.ts`
 Expected: 6 agents + 12 weeks of activities seeded.
