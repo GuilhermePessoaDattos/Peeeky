@@ -1932,49 +1932,27 @@ git commit -m "feat: content and reports directory structure"
 **Files:**
 - Configuration via Claude Code `/schedule` skill
 
-- [x] **Step 1: Create weekly content writer trigger**
+- [x] **Step 1: Create content-and-social-weekly trigger** ✅ Consolidated: Content Writer + Social Manager
 
-Use `/schedule` to create a trigger:
-- Name: `content-writer-weekly`
-- Schedule: Every Sunday at 10:00 UTC
-- Prompt: "Read agents/content-writer/prompt.md and generate 2 blog posts for this week. Use the audience-pain-discoverer and brand-voice-guide-generator skills. Save drafts to content/blog/drafts/"
+Trigger: `content-and-social-weekly` (trig_01MhJ2WqsbqnV37uGHjGdi9x)
+- Schedule: Every Sunday at 10:00 UTC (07:00 BRT)
+- Agents: Content Writer (2 blog posts) + Social Manager (5 LinkedIn + 5 tweets)
 
-- [x] **Step 2: Create weekly social manager trigger**
+- [x] **Step 2: Create community-and-outbound-weekdays trigger** ✅ Consolidated: Community Rep + Outbound Sales
 
-Use `/schedule` to create a trigger:
-- Name: `social-manager-weekly`
-- Schedule: Every Sunday at 11:00 UTC
-- Prompt: "Read agents/social-manager/prompt.md and generate 5 LinkedIn posts and 5 tweets for this week. Use the blog-to-social-repurposing skill. Save to content/social/drafts/"
+Trigger: `community-and-outbound-weekdays` (trig_01MNPK2S8NaRRxC8PCoAaRoe)
+- Schedule: Every weekday at 13:00 UTC (10:00 BRT)
+- Agents: Community Rep (3-5 thread responses) + Outbound Sales (25 cold emails)
 
-- [x] **Step 3: Create daily community rep trigger**
+- [x] **Step 3: Create ops-and-analytics trigger** ✅ Consolidated: GitHub Maintainer + Analytics Reporter
 
-Use `/schedule` to create a trigger:
-- Name: `community-rep-daily`
-- Schedule: Every day at 14:00 UTC
-- Prompt: "Read agents/community-rep/prompt.md. Use firecrawl-search to find relevant threads on Reddit and HN. Draft 3-5 responses. Save to content/community/drafts/"
+Trigger: `ops-and-analytics` (trig_01WupyaUqbkpgdVttHt8gwdN)
+- Schedule: Every day at 09:00 UTC (06:00 BRT)
+- Agents: GitHub Maintainer (daily triage) + Analytics Reporter (Mondays only)
 
-- [ ] **Step 4: Create daily outbound sales trigger** ⚠️ BLOCKED — plan limit (3 triggers max). Upgrade plan or disable one existing trigger.
+- [x] **Step 4-6: N/A** — All 6 agents consolidated into 3 triggers above (plan limit: 3 triggers)
 
-Use `/schedule` to create a trigger:
-- Name: `outbound-sales-daily`
-- Schedule: Every weekday at 13:00 UTC
-- Prompt: "Read agents/outbound-sales/prompt.md. Use prospect-research-autopilot and firecrawl-search to find 25 leads. Draft personalized emails. Save to content/outbound/drafts/"
-
-- [ ] **Step 5: Create daily GitHub maintainer trigger** ⚠️ BLOCKED — plan limit (3 triggers max)
-
-Use `/schedule` to create a trigger:
-- Name: `github-maintainer-daily`
-- Schedule: Every day at 09:00 UTC
-- Prompt: "Read agents/github-maintainer/prompt.md. Check peeeky/peeeky-js and peeeky/viewer repos for new issues, PRs, and discussions. Triage and respond."
-
-- [ ] **Step 6: Create weekly analytics reporter trigger** ⚠️ BLOCKED — plan limit (3 triggers max)
-
-Use `/schedule` to create a trigger:
-- Name: `analytics-reporter-weekly`
-- Schedule: Every Monday at 08:00 UTC
-- Prompt: "Read agents/analytics-reporter/prompt.md. Pull data from Stripe, Vercel, GitHub, and database. Generate weekly report and save to reports/weekly/"
-
-- [x] **Step 7: Commit trigger configurations** (3/6 triggers created — content-writer, social-manager, community-rep)
+- [x] **Step 7: Trigger configurations complete** — All 6 agents scheduled via 3 consolidated triggers
 
 ```bash
 git add -A
