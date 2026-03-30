@@ -1968,7 +1968,7 @@ git commit -m "feat: scheduled triggers for all 6 GTM agents"
 **Files:**
 - Create: `src/modules/emails/templates/onboarding.ts`
 
-- [ ] **Step 1: Create onboarding email templates**
+- [x] **Step 1: Create onboarding email templates**
 
 Create `src/modules/emails/templates/onboarding.ts`:
 
@@ -2135,7 +2135,7 @@ you'd love to see.
 export type OnboardingEmailId = (typeof ONBOARDING_EMAILS)[number]["id"];
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/modules/emails/templates/onboarding.ts
@@ -2149,7 +2149,7 @@ git commit -m "feat: onboarding email sequence templates (7 emails over 30 days)
 **Files:**
 - Create: `src/app/api/cron/onboarding-emails/route.ts`
 
-- [ ] **Step 1: Create the cron endpoint**
+- [x] **Step 1: Create the cron endpoint**
 
 Create `src/app/api/cron/onboarding-emails/route.ts`:
 
@@ -2250,7 +2250,7 @@ export async function GET(req: NextRequest) {
 }
 ```
 
-- [ ] **Step 2: Add to vercel.json cron config**
+- [x] **Step 2: Add to vercel.json cron config**
 
 Add to `vercel.json` (create if doesn't exist):
 
@@ -2265,7 +2265,7 @@ Add to `vercel.json` (create if doesn't exist):
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/app/api/cron/onboarding-emails/ vercel.json
@@ -2281,11 +2281,11 @@ git commit -m "feat: daily cron for onboarding email sequences"
 **Files:**
 - Modify: `src/app/layout.tsx`
 
-- [ ] **Step 1: Read current layout**
+- [x] **Step 1: Read current layout**
 
 Read `src/app/layout.tsx` to find the `<head>` section.
 
-- [ ] **Step 2: Add Google Ads and Meta pixel scripts**
+- [x] **Step 2: Add Google Ads and Meta pixel scripts**
 
 Add to the `<head>` section of `src/app/layout.tsx`:
 
@@ -2304,7 +2304,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 )}
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/app/layout.tsx
@@ -3302,7 +3302,7 @@ git commit -m "feat: GTM admin dashboard — weekly calendar + agent management"
 - Create: `src/app/api/cron/gtm-agents/route.ts`
 - Create: `src/modules/gtm/agent-runner.ts`
 
-- [ ] **Step 1: Create agent runner module**
+- [x] **Step 1: Create agent runner module**
 
 Create `src/modules/gtm/agent-runner.ts`:
 
@@ -3472,7 +3472,7 @@ Paying: ${proOrgs} Pro + ${bizOrgs} Business`;
 }
 ```
 
-- [ ] **Step 2: Create the cron endpoint**
+- [x] **Step 2: Create the cron endpoint**
 
 Create `src/app/api/cron/gtm-agents/route.ts`:
 
@@ -3562,7 +3562,7 @@ function expandRange(range: string): number[] {
 }
 ```
 
-- [ ] **Step 3: Add to vercel.json crons**
+- [x] **Step 3: Add to vercel.json crons**
 
 Update `vercel.json` to add the GTM agent cron (runs every hour):
 
@@ -3593,7 +3593,7 @@ Update `vercel.json` to add the GTM agent cron (runs every hour):
 }
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/modules/gtm/ src/app/api/cron/gtm-agents/ vercel.json
@@ -3608,7 +3608,7 @@ git commit -m "feat: cloud agent orchestration — hourly cron checks schedules,
 - Create: `src/modules/gtm/actions/send-email.ts`
 - Create: `src/modules/gtm/actions/publish-blog.ts`
 
-- [ ] **Step 1: Create email sending action**
+- [x] **Step 1: Create email sending action**
 
 Create `src/modules/gtm/actions/send-email.ts`:
 
@@ -3650,7 +3650,7 @@ export async function sendBatchEmails(emails: OutboundEmail[]) {
 }
 ```
 
-- [ ] **Step 2: Create blog publishing action**
+- [x] **Step 2: Create blog publishing action**
 
 Create `src/modules/gtm/actions/publish-blog.ts`:
 
@@ -3693,7 +3693,7 @@ ${post.content}`;
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/modules/gtm/actions/
