@@ -3722,3 +3722,84 @@ After week 4, all infrastructure is live:
 - Retargeting pixel collecting data for future ads
 
 Your role shifts to: review agent outputs, approve/reject drafts, monitor GTM dashboard (~5h/week).
+
+---
+
+## Workstream I: Analytics, SEO & Config (Priority 1 — Week 1)
+
+### Task I1: Google Tag Manager + Google Analytics
+
+- [ ] **Step 1: Criar conta no Google Tag Manager** (https://tagmanager.google.com)
+- [ ] **Step 2: Criar container web para peeeky.com, copiar GTM ID (GTM-XXXXXXX)**
+- [ ] **Step 3: Configurar tag do Google Analytics 4 (GA4) dentro do GTM**
+- [ ] **Step 4: Setar env var `NEXT_PUBLIC_GTM_ID` no Vercel** (Settings → Environment Variables)
+- [ ] **Step 5: Redeploy no Vercel para ativar o pixel**
+- [ ] **Step 6: Verificar no GA4 que eventos estão chegando (Real-Time report)**
+
+### Task I2: Google Search Console (SEO)
+
+- [ ] **Step 1: Acessar Google Search Console** (https://search.google.com/search-console)
+- [ ] **Step 2: Adicionar propriedade `peeeky.com` (verificar via DNS TXT record)**
+- [ ] **Step 3: Submeter sitemap: `https://peeeky.com/sitemap.xml`**
+- [ ] **Step 4: Verificar indexação das páginas principais (/, /vs/docsend, /for/fundraising, /blog)**
+
+### Task I3: Bing Webmaster Tools
+
+- [ ] **Step 1: Acessar Bing Webmaster Tools** (https://www.bing.com/webmasters)
+- [ ] **Step 2: Adicionar site e verificar propriedade**
+- [ ] **Step 3: Submeter sitemap: `https://peeeky.com/sitemap.xml`**
+
+### Task I4: Vercel Analytics
+
+- [ ] **Step 1: No Vercel dashboard, ir em Settings → Analytics → Enable**
+- [ ] **Step 2: Verificar que Web Vitals e page views estão sendo coletados**
+
+### Task I5: Configurações de ambiente no Vercel
+
+- [ ] **Step 1: Setar `CRON_SECRET` no Vercel** (protege endpoints de cron)
+- [ ] **Step 2: Verificar que `RESEND_API_KEY` está configurado**
+- [ ] **Step 3: Verificar que `DATABASE_URL` aponta para produção**
+
+---
+
+## Workstream J: Persona, Perfis & Distribuição (Priority 1 — Week 1)
+
+### Task J1: Configurar email da persona
+
+- [ ] **Step 1: Configurar `alex@peeeky.com` como alias no Resend**
+- [ ] **Step 2: Testar envio de email como Alex Moreira**
+
+### Task J2: Criar perfis da marca e persona
+
+- [ ] **Step 1: Gerar foto AI consistente para Alex Moreira** (thispersondoesnotexist.com ou similar)
+- [ ] **Step 2: Criar LinkedIn Company Page "Peeeky"**
+- [ ] **Step 3: Criar LinkedIn pessoal "Alex Moreira — Head of Product @ Peeeky"**
+- [ ] **Step 4: Criar conta Twitter/X @peeeky**
+- [ ] **Step 5: Criar conta Reddit u/peeeky_team**
+- [ ] **Step 6: Cadastrar no Product Hunt como "Alex Moreira @ Peeeky"**
+- [ ] **Step 7: Cadastrar no Indie Hackers como "peeeky"**
+
+### Task J3: Diretórios e marketplaces
+
+- [ ] **Step 1: Cadastrar no BetaList**
+- [ ] **Step 2: Cadastrar no AlternativeTo (como alternativa ao DocSend)**
+- [ ] **Step 3: Cadastrar no SaaSHub**
+
+### Task J4: Publicar pacotes npm
+
+- [ ] **Step 1: Criar org "peeeky" no npm** (https://www.npmjs.com)
+- [ ] **Step 2: Publicar peeeky-js no npm** (`cd packages/peeeky-js && npm publish`)
+- [ ] **Step 3: Publicar @peeeky/viewer no npm** (`cd packages/peeeky-viewer && npm publish`)
+
+### Task J5: Criar conta AppSumo e submeter deal
+
+- [ ] **Step 1: Criar conta seller no AppSumo como "Peeeky"**
+- [ ] **Step 2: Preparar assets: 4-5 screenshots + vídeo demo 90s**
+- [ ] **Step 3: Preencher listing com tiers ($59/$99/$149)**
+- [ ] **Step 4: Submeter deal para review**
+
+### Task J6: GitHub org
+
+- [ ] **Step 1: Criar GitHub org "peeeky"**
+- [ ] **Step 2: Criar repos peeeky/peeeky-js e peeeky/viewer (ou fork)**
+- [ ] **Step 3: README com badges, GIF demo, quick start**
