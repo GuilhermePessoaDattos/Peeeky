@@ -18,7 +18,7 @@
 - Modify: `prisma/schema.prisma`
 - Modify: `src/config/plans.ts`
 
-- [ ] **Step 1: Add AppSumo fields to Prisma schema**
+- [x] **Step 1: Add AppSumo fields to Prisma schema**
 
 Add to `prisma/schema.prisma` after the existing `Plan` enum:
 
@@ -63,7 +63,7 @@ model Organization {
 Run: `npx prisma migrate dev --name add-appsumo-license`
 Expected: Migration succeeds, new table `AppSumoLicense` created.
 
-- [ ] **Step 3: Update plans config**
+- [x] **Step 3: Update plans config**
 
 In `src/config/plans.ts`, add AppSumo tiers:
 
@@ -128,7 +128,7 @@ export const PLAN_LIMITS = {
 export type PlanType = keyof typeof PLAN_LIMITS;
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add prisma/schema.prisma src/config/plans.ts
@@ -143,7 +143,7 @@ git commit -m "feat: add AppSumo license schema and plan tiers"
 - Create: `src/app/api/appsumo/redeem/route.ts`
 - Create: `src/app/api/appsumo/webhook/route.ts`
 
-- [ ] **Step 1: Create redeem API endpoint**
+- [x] **Step 1: Create redeem API endpoint**
 
 Create `src/app/api/appsumo/redeem/route.ts`:
 
@@ -223,7 +223,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-- [ ] **Step 2: Create AppSumo webhook endpoint**
+- [x] **Step 2: Create AppSumo webhook endpoint**
 
 Create `src/app/api/appsumo/webhook/route.ts`:
 
@@ -318,7 +318,7 @@ function generateLicenseCode(): string {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/app/api/appsumo/
@@ -332,7 +332,7 @@ git commit -m "feat: AppSumo license redeem and webhook endpoints"
 **Files:**
 - Create: `src/app/(dashboard)/redeem/page.tsx`
 
-- [ ] **Step 1: Create the redeem page**
+- [x] **Step 1: Create the redeem page**
 
 Create `src/app/(dashboard)/redeem/page.tsx`:
 
@@ -419,7 +419,7 @@ export default function RedeemPage() {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/app/\(dashboard\)/redeem/
@@ -433,7 +433,7 @@ git commit -m "feat: AppSumo license redeem page UI"
 **Files:**
 - Create: `scripts/generate-appsumo-codes.ts`
 
-- [ ] **Step 1: Create the seed script**
+- [x] **Step 1: Create the seed script**
 
 Create `scripts/generate-appsumo-codes.ts`:
 
@@ -491,7 +491,7 @@ main()
   .finally(() => prisma.$disconnect());
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add scripts/generate-appsumo-codes.ts
@@ -1544,13 +1544,13 @@ git commit -m "docs: @peeeky/viewer README and MIT license"
 - Create: `agents/github-maintainer/prompt.md`
 - Create: `agents/analytics-reporter/prompt.md`
 
-- [ ] **Step 1: Create directory structure**
+- [x] **Step 1: Create directory structure**
 
 ```bash
 mkdir -p agents/{content-writer,social-manager,community-rep,outbound-sales,github-maintainer,analytics-reporter}
 ```
 
-- [ ] **Step 2: Create content writer agent prompt**
+- [x] **Step 2: Create content writer agent prompt**
 
 Create `agents/content-writer/prompt.md`:
 
@@ -1609,7 +1609,7 @@ targetKeyword: "main keyword"
 - Use skills: blog-to-social-repurposing, landing-page-copy-generator, brand-voice-guide-generator
 ```
 
-- [ ] **Step 3: Create social manager agent prompt**
+- [x] **Step 3: Create social manager agent prompt**
 
 Create `agents/social-manager/prompt.md`:
 
@@ -1663,7 +1663,7 @@ Save tweets to: `content/social/drafts/twitter/YYYY-MM-DD-N.md`
 - Never mentions the real founder
 ```
 
-- [ ] **Step 4: Create community rep agent prompt**
+- [x] **Step 4: Create community rep agent prompt**
 
 Create `agents/community-rep/prompt.md`:
 
@@ -1714,7 +1714,7 @@ Include in each file:
 - Use skills: audience-pain-discoverer, competitor-content-gap-finder
 ```
 
-- [ ] **Step 5: Create outbound sales agent prompt**
+- [x] **Step 5: Create outbound sales agent prompt**
 
 Create `agents/outbound-sales/prompt.md`:
 
@@ -1781,7 +1781,7 @@ Include:
 - Use skills: prospect-research-autopilot, discovery-call-prep-brief, linkedin-connection-message-generator
 ```
 
-- [ ] **Step 6: Create GitHub maintainer agent prompt**
+- [x] **Step 6: Create GitHub maintainer agent prompt**
 
 Create `agents/github-maintainer/prompt.md`:
 
@@ -1818,7 +1818,7 @@ Daily triage:
 - Log actions to: `agents/github-maintainer/log/YYYY-MM-DD.md`
 ```
 
-- [ ] **Step 7: Create analytics reporter agent prompt**
+- [x] **Step 7: Create analytics reporter agent prompt**
 
 Create `agents/analytics-reporter/prompt.md`:
 
@@ -1881,7 +1881,7 @@ Save to: `reports/weekly/YYYY-MM-DD-weekly-report.md`
 - Keep the report under 1 page
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add agents/
@@ -1895,7 +1895,7 @@ git commit -m "feat: agent prompts for content, social, community, outbound, git
 **Files:**
 - Create directory structure for content drafts
 
-- [ ] **Step 1: Create all content directories**
+- [x] **Step 1: Create all content directories**
 
 ```bash
 mkdir -p content/blog/drafts
@@ -1918,7 +1918,7 @@ touch reports/weekly/.gitkeep
 touch agents/github-maintainer/log/.gitkeep
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add content/ reports/ agents/github-maintainer/log/
@@ -2342,7 +2342,7 @@ git commit -m "feat: add Google Tag Manager pixel for retargeting"
 **Files:**
 - Modify: `prisma/schema.prisma`
 
-- [ ] **Step 1: Add GTM models to Prisma schema**
+- [x] **Step 1: Add GTM models to Prisma schema**
 
 Add to `prisma/schema.prisma`:
 
@@ -2422,7 +2422,7 @@ model GtmAgentRun {
 Run: `npx prisma migrate dev --name add-gtm-dashboard-models`
 Expected: Migration succeeds, 4 new tables created.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add prisma/schema.prisma
@@ -2436,7 +2436,7 @@ git commit -m "feat: GTM dashboard schema — weeks, activities, agents, runs"
 **Files:**
 - Create: `scripts/seed-gtm.ts`
 
-- [ ] **Step 1: Create seed script**
+- [x] **Step 1: Create seed script**
 
 Create `scripts/seed-gtm.ts`:
 
@@ -2642,7 +2642,7 @@ main()
 Run: `npx tsx scripts/seed-gtm.ts`
 Expected: 6 agents + 12 weeks of activities seeded.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add scripts/seed-gtm.ts
@@ -2661,7 +2661,7 @@ git commit -m "feat: seed script for GTM agents and 12-week activity calendar"
 - Create: `src/app/api/admin/gtm/agents/[id]/route.ts`
 - Create: `src/app/api/admin/gtm/agents/[id]/trigger/route.ts`
 
-- [ ] **Step 1: Create GTM stats endpoint**
+- [x] **Step 1: Create GTM stats endpoint**
 
 Create `src/app/api/admin/gtm/stats/route.ts`:
 
@@ -2724,7 +2724,7 @@ function getMonday(d: Date): Date {
 }
 ```
 
-- [ ] **Step 2: Create weeks endpoint (calendar)**
+- [x] **Step 2: Create weeks endpoint (calendar)**
 
 Create `src/app/api/admin/gtm/weeks/route.ts`:
 
@@ -2762,7 +2762,7 @@ export async function GET(req: NextRequest) {
 }
 ```
 
-- [ ] **Step 3: Create activity update endpoint**
+- [x] **Step 3: Create activity update endpoint**
 
 Create `src/app/api/admin/gtm/activities/[id]/route.ts`:
 
@@ -2806,7 +2806,7 @@ export async function DELETE(
 }
 ```
 
-- [ ] **Step 4: Create agents list + update endpoints**
+- [x] **Step 4: Create agents list + update endpoints**
 
 Create `src/app/api/admin/gtm/agents/route.ts`:
 
@@ -2851,7 +2851,7 @@ export async function PATCH(
 }
 ```
 
-- [ ] **Step 5: Create manual agent trigger endpoint**
+- [x] **Step 5: Create manual agent trigger endpoint**
 
 Create `src/app/api/admin/gtm/agents/[id]/trigger/route.ts`:
 
@@ -2901,7 +2901,7 @@ export async function POST(
 }
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/app/api/admin/gtm/
@@ -2916,7 +2916,7 @@ git commit -m "feat: GTM admin API — stats, weeks, activities, agents, trigger
 - Create: `src/app/admin/gtm/page.tsx`
 - Modify: `src/app/admin/layout.tsx`
 
-- [ ] **Step 1: Add GTM to admin sidebar**
+- [x] **Step 1: Add GTM to admin sidebar**
 
 In `src/app/admin/layout.tsx`, add to `adminLinks` array:
 
@@ -2933,7 +2933,7 @@ const adminLinks = [
 ];
 ```
 
-- [ ] **Step 2: Create the GTM dashboard page**
+- [x] **Step 2: Create the GTM dashboard page**
 
 Create `src/app/admin/gtm/page.tsx`:
 
@@ -3307,7 +3307,7 @@ export default function GtmDashboard() {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/app/admin/gtm/ src/app/admin/layout.tsx
