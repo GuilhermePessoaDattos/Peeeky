@@ -1,0 +1,36 @@
+{
+  "name": "@peeeky/viewer",
+  "version": "1.0.0",
+  "description": "Open-source PDF viewer with built-in engagement tracking. React component.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "keywords": ["pdf-viewer", "react", "document-tracking", "analytics", "peeeky"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/peeeky/viewer"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "dependencies": {
+    "pdfjs-dist": "^4.0.0"
+  },
+  "devDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@types/react": "^19.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --external react --external react-dom --clean",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --external react --external react-dom --watch",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  }
+}

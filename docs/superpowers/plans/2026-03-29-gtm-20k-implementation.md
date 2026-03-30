@@ -510,7 +510,7 @@ git commit -m "feat: script to generate AppSumo license codes"
 - Create: `packages/peeeky-js/src/index.ts`
 - Create: `packages/peeeky-js/README.md`
 
-- [ ] **Step 1: Create package structure**
+- [x] **Step 1: Create package structure**
 
 ```bash
 mkdir -p packages/peeeky-js/src
@@ -566,7 +566,7 @@ Create `packages/peeeky-js/tsconfig.json`:
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add packages/peeeky-js/package.json packages/peeeky-js/tsconfig.json
@@ -581,7 +581,7 @@ git commit -m "feat: initialize peeeky-js SDK package"
 - Create: `packages/peeeky-js/src/index.ts`
 - Create: `packages/peeeky-js/src/types.ts`
 
-- [ ] **Step 1: Create types**
+- [x] **Step 1: Create types**
 
 Create `packages/peeeky-js/src/types.ts`:
 
@@ -607,7 +607,7 @@ export interface TrackResponse {
 }
 ```
 
-- [ ] **Step 2: Create main SDK**
+- [x] **Step 2: Create main SDK**
 
 Create `packages/peeeky-js/src/index.ts`:
 
@@ -729,7 +729,7 @@ export const Peeeky = {
 export default Peeeky;
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add packages/peeeky-js/src/
@@ -743,7 +743,7 @@ git commit -m "feat: peeeky-js SDK core — init, track, page timer"
 **Files:**
 - Create: `packages/peeeky-js/src/__tests__/peeeky.test.ts`
 
-- [ ] **Step 1: Write tests**
+- [x] **Step 1: Write tests**
 
 Create `packages/peeeky-js/src/__tests__/peeeky.test.ts`:
 
@@ -848,7 +848,7 @@ describe("Peeeky SDK", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests**
+- [x] **Step 2: Run tests**
 
 ```bash
 cd packages/peeeky-js && npm install && npm test
@@ -856,7 +856,7 @@ cd packages/peeeky-js && npm install && npm test
 
 Expected: All tests pass.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add packages/peeeky-js/
@@ -871,7 +871,7 @@ git commit -m "test: peeeky-js SDK tests — init, track, view lifecycle"
 - Create: `packages/peeeky-js/README.md`
 - Create: `packages/peeeky-js/LICENSE`
 
-- [ ] **Step 1: Create README**
+- [x] **Step 1: Create README**
 
 Create `packages/peeeky-js/README.md`:
 
@@ -963,7 +963,7 @@ All tracked events appear in your [Peeeky dashboard](https://peeeky.com/document
 MIT
 ````
 
-- [ ] **Step 2: Create LICENSE file**
+- [x] **Step 2: Create LICENSE file**
 
 Create `packages/peeeky-js/LICENSE`:
 
@@ -991,7 +991,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add packages/peeeky-js/README.md packages/peeeky-js/LICENSE
@@ -1008,7 +1008,7 @@ git commit -m "docs: peeeky-js README with badges, examples, and MIT license"
 - Create: `packages/peeeky-viewer/package.json`
 - Create: `packages/peeeky-viewer/tsconfig.json`
 
-- [ ] **Step 1: Create package structure**
+- [x] **Step 1: Create package structure**
 
 ```bash
 mkdir -p packages/peeeky-viewer/src
@@ -1074,7 +1074,7 @@ Create `packages/peeeky-viewer/tsconfig.json`:
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add packages/peeeky-viewer/
@@ -1092,7 +1092,7 @@ git commit -m "feat: initialize @peeeky/viewer package"
 - Create: `packages/peeeky-viewer/src/use-pdf.ts`
 - Create: `packages/peeeky-viewer/src/use-tracking.ts`
 
-- [ ] **Step 1: Create types**
+- [x] **Step 1: Create types**
 
 Create `packages/peeeky-viewer/src/types.ts`:
 
@@ -1115,7 +1115,7 @@ export interface PeeekyViewerProps {
 }
 ```
 
-- [ ] **Step 2: Create PDF rendering hook**
+- [x] **Step 2: Create PDF rendering hook**
 
 Create `packages/peeeky-viewer/src/use-pdf.ts`:
 
@@ -1172,7 +1172,7 @@ export function usePdf(src: string) {
 }
 ```
 
-- [ ] **Step 3: Create tracking hook**
+- [x] **Step 3: Create tracking hook**
 
 Create `packages/peeeky-viewer/src/use-tracking.ts`:
 
@@ -1275,7 +1275,7 @@ export function useTracking(config: TrackingConfig) {
 }
 ```
 
-- [ ] **Step 4: Create main viewer component**
+- [x] **Step 4: Create main viewer component**
 
 Create `packages/peeeky-viewer/src/PeeekyViewer.tsx`:
 
@@ -1421,7 +1421,7 @@ export function PeeekyViewer({
 }
 ```
 
-- [ ] **Step 5: Create index export**
+- [x] **Step 5: Create index export**
 
 Create `packages/peeeky-viewer/src/index.ts`:
 
@@ -1430,7 +1430,7 @@ export { PeeekyViewer } from "./PeeekyViewer";
 export type { PeeekyViewerProps } from "./types";
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/peeeky-viewer/src/
@@ -1445,7 +1445,7 @@ git commit -m "feat: @peeeky/viewer — PDF viewer component with tracking hooks
 - Create: `packages/peeeky-viewer/README.md`
 - Create: `packages/peeeky-viewer/LICENSE`
 
-- [ ] **Step 1: Create README**
+- [x] **Step 1: Create README**
 
 Create `packages/peeeky-viewer/README.md`:
 
@@ -1519,11 +1519,11 @@ Connect to [Peeeky](https://peeeky.com) to get:
 MIT
 ````
 
-- [ ] **Step 2: Copy LICENSE (same MIT)**
+- [x] **Step 2: Copy LICENSE (same MIT)**
 
 Create `packages/peeeky-viewer/LICENSE` with the same MIT license text as peeeky-js.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add packages/peeeky-viewer/README.md packages/peeeky-viewer/LICENSE
