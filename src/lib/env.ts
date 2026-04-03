@@ -29,13 +29,13 @@ export function validateEnv() {
   const missing = required.filter((key) => !process.env[key]);
 
   if (missing.length > 0) {
-    throw new Error(
-      `\n\n❌ Missing required environment variables:\n${missing.map((k) => `   - ${k}`).join("\n")}\n\nSet them in .env (local) or Vercel dashboard (production).\nSee .env.example for reference.\n`
+    console.error(
+      `\n❌ Missing required environment variables:\n${missing.map((k) => `   - ${k}`).join("\n")}\n\nSet them in .env (local) or Vercel dashboard (production).\nSee .env.example for reference.\n`
     );
   }
 
   const missingOptional = optional.filter((key) => !process.env[key]);
-  if (missingOptional.length > 0 && process.env.NODE_ENV === "production") {
+  if (missingOptional.length > 0) {
     console.warn(
       `⚠️  Optional env vars not set: ${missingOptional.join(", ")}`
     );
