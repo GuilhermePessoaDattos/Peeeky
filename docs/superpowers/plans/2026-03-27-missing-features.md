@@ -52,7 +52,7 @@ Modified files:
 **Files:**
 - Modify: `src/app/api/track/route.ts`
 
-- [ ] **Step 1: Add geo-ip extraction to view_start action**
+- [x] **Step 1: Add geo-ip extraction to view_start action**
 
 In `src/app/api/track/route.ts`, update the `view_start` handler to read Vercel headers. Find the section where `recordView` is called and add country/city:
 
@@ -76,7 +76,7 @@ const view = await recordView(linkId, {
 });
 ```
 
-- [ ] **Step 2: Update recordView to accept country/city**
+- [x] **Step 2: Update recordView to accept country/city**
 
 In `src/modules/tracking/index.ts`, update the `recordView` function signature and Prisma create call:
 
@@ -108,16 +108,16 @@ export async function recordView(
   // ... rest of function (increment totalViews)
 ```
 
-- [ ] **Step 3: Verify the View model already has country/city fields**
+- [x] **Step 3: Verify the View model already has country/city fields**
 
 Check `prisma/schema.prisma` — the View model should already have `country String?` and `city String?` fields. If not, add them and run `npx prisma db push`.
 
-- [ ] **Step 4: Test locally**
+- [x] **Step 4: Test locally**
 
 Run: `npm run dev`
 Open a document viewer link. Check the database — the View record should have country=null, city=null in local dev (Vercel headers only exist in production). In production, these will be populated automatically.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/app/api/track/route.ts src/modules/tracking/index.ts
@@ -133,7 +133,7 @@ git commit -m "feat: populate geo-ip from Vercel headers on view_start"
 - Create: `src/app/api/cron/cleanup/route.ts`
 - Create: `src/app/api/cron/refresh-analytics/route.ts`
 
-- [ ] **Step 1: Create vercel.json with cron schedules**
+- [x] **Step 1: Create vercel.json with cron schedules**
 
 Create `vercel.json` in the project root:
 
@@ -152,11 +152,11 @@ Create `vercel.json` in the project root:
 }
 ```
 
-- [ ] **Step 2: Create cron auth helper**
+- [x] **Step 2: Create cron auth helper**
 
 Add a shared auth check at the top of each cron route. Vercel sends `Authorization: Bearer <CRON_SECRET>`:
 
-- [ ] **Step 3: Create cleanup cron route**
+- [x] **Step 3: Create cleanup cron route**
 
 Create `src/app/api/cron/cleanup/route.ts`:
 
@@ -208,7 +208,7 @@ export async function GET(req: NextRequest) {
 }
 ```
 
-- [ ] **Step 4: Create refresh-analytics cron route**
+- [x] **Step 4: Create refresh-analytics cron route**
 
 Create `src/app/api/cron/refresh-analytics/route.ts`:
 
@@ -262,7 +262,7 @@ export async function GET(req: NextRequest) {
 }
 ```
 
-- [ ] **Step 5: Test locally**
+- [x] **Step 5: Test locally**
 
 Run each cron route manually:
 ```bash
@@ -272,7 +272,7 @@ curl -H "Authorization: Bearer test-secret" http://localhost:3000/api/cron/refre
 
 Set `CRON_SECRET=test-secret` in `.env.local` for testing.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add vercel.json src/app/api/cron/
@@ -287,7 +287,7 @@ git commit -m "feat: add Vercel cron jobs for cleanup and analytics refresh"
 - Modify: `src/app/api/documents/[id]/analytics/route.ts`
 - Modify: `src/app/api/track/route.ts`
 
-- [ ] **Step 1: Add cache layer to analytics endpoint**
+- [x] **Step 1: Add cache layer to analytics endpoint**
 
 Replace the GET handler in `src/app/api/documents/[id]/analytics/route.ts`:
 
@@ -348,7 +348,7 @@ export async function GET(
 }
 ```
 
-- [ ] **Step 2: Invalidate cache on new view_end**
+- [x] **Step 2: Invalidate cache on new view_end**
 
 In `src/app/api/track/route.ts`, in the `view_end` case, after calling `updateViewDuration`, add cache invalidation:
 
@@ -374,14 +374,14 @@ And add the prisma import if not already present:
 import { prisma } from "@/lib/prisma";
 ```
 
-- [ ] **Step 3: Test the cache flow**
+- [x] **Step 3: Test the cache flow**
 
 1. Open analytics for a document — should compute and cache
 2. Refresh — should be faster (cache hit)
 3. View the document in another tab, let it complete — cache should be invalidated
 4. Refresh analytics — should recompute
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/app/api/documents/[id]/analytics/route.ts src/app/api/track/route.ts
@@ -398,7 +398,7 @@ git commit -m "feat: add Redis cache layer for document analytics"
 - Modify: `src/app/(viewer)/view/[slug]/viewer-client.tsx`
 - Modify: `src/app/(dashboard)/documents/[id]/page.tsx`
 
-- [ ] **Step 1: Add heartbeat action to track API**
+- [x] **Step 1: Add heartbeat action to track API**
 
 In `src/app/api/track/route.ts`, add a new case in the action switch for `heartbeat`:
 
@@ -422,7 +422,7 @@ case "heartbeat": {
 }
 ```
 
-- [ ] **Step 2: Create viewers-now API endpoint**
+- [x] **Step 2: Create viewers-now API endpoint**
 
 Create `src/app/api/documents/[id]/viewers-now/route.ts`:
 
@@ -469,7 +469,7 @@ export async function GET(
 }
 ```
 
-- [ ] **Step 3: Add heartbeat interval to viewer client**
+- [x] **Step 3: Add heartbeat interval to viewer client**
 
 In `src/app/(viewer)/view/[slug]/viewer-client.tsx`, add a heartbeat effect after the existing `view_start` effect:
 
@@ -505,7 +505,7 @@ useEffect(() => {
 }, [viewId, link.id]);
 ```
 
-- [ ] **Step 4: Add "viewing now" badge to document detail page**
+- [x] **Step 4: Add "viewing now" badge to document detail page**
 
 In `src/app/(dashboard)/documents/[id]/page.tsx`, add a component that polls the viewers-now endpoint. Add this near the top of the main component:
 
@@ -537,14 +537,14 @@ Then render a badge next to the document title:
 )}
 ```
 
-- [ ] **Step 5: Test the flow**
+- [x] **Step 5: Test the flow**
 
 1. Open a document viewer in one tab
 2. Open the dashboard document detail in another tab
 3. Badge should show "1 viewing now" within 15 seconds
 4. Close the viewer tab → badge should disappear within 30 seconds
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/app/api/track/route.ts src/app/api/documents/[id]/viewers-now/route.ts src/app/(viewer)/view/[slug]/viewer-client.tsx src/app/(dashboard)/documents/[id]/page.tsx
@@ -560,13 +560,13 @@ git commit -m "feat: add real-time 'currently viewing' indicator with Redis hear
 - Modify: `src/modules/documents/index.ts`
 - Modify: `src/app/api/documents/route.ts`
 
-- [ ] **Step 1: Install CloudConvert SDK**
+- [x] **Step 1: Install CloudConvert SDK**
 
 ```bash
 npm install cloudconvert
 ```
 
-- [ ] **Step 2: Create CloudConvert client**
+- [x] **Step 2: Create CloudConvert client**
 
 Create `src/lib/cloudconvert.ts`:
 
@@ -626,7 +626,7 @@ export async function convertPptxToPdf(fileBuffer: Buffer, fileName: string): Pr
 }
 ```
 
-- [ ] **Step 3: Update createDocument to handle PPTX conversion**
+- [x] **Step 3: Update createDocument to handle PPTX conversion**
 
 In `src/modules/documents/index.ts`, update the `createDocument` function. After the R2 upload, if the file is PPTX, convert and re-upload:
 
@@ -689,7 +689,7 @@ export async function createDocument(
 }
 ```
 
-- [ ] **Step 4: Add CLOUDCONVERT_API_KEY to env**
+- [x] **Step 4: Add CLOUDCONVERT_API_KEY to env**
 
 Add to `.env.local`:
 ```
@@ -701,14 +701,14 @@ Add to `.env.example`:
 CLOUDCONVERT_API_KEY=
 ```
 
-- [ ] **Step 5: Test with a PPTX file**
+- [x] **Step 5: Test with a PPTX file**
 
 1. Upload a .pptx file via the dashboard
 2. Should show "PROCESSING" status immediately
 3. After conversion (10-30s), status should change to "READY"
 4. Open the document viewer — should render the converted PDF
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/lib/cloudconvert.ts src/modules/documents/index.ts src/app/api/documents/route.ts package.json package-lock.json
@@ -725,7 +725,7 @@ git commit -m "feat: add PPTX to PDF conversion via CloudConvert"
 - Create: `src/app/api/datarooms/[id]/access/route.ts`
 - Modify: `src/app/(viewer)/room/[slug]/page.tsx`
 
-- [ ] **Step 1: Add DataRoomAccess model to schema**
+- [x] **Step 1: Add DataRoomAccess model to schema**
 
 In `prisma/schema.prisma`, add:
 
@@ -758,7 +758,7 @@ Then push the schema:
 npx prisma db push
 ```
 
-- [ ] **Step 2: Add access control functions to datarooms module**
+- [x] **Step 2: Add access control functions to datarooms module**
 
 Add to `src/modules/datarooms/index.ts`:
 
@@ -835,7 +835,7 @@ export async function getVisibleDocuments(
 }
 ```
 
-- [ ] **Step 3: Create access control API route**
+- [x] **Step 3: Create access control API route**
 
 Create `src/app/api/datarooms/[id]/access/route.ts`:
 
@@ -907,7 +907,7 @@ export async function DELETE(
 }
 ```
 
-- [ ] **Step 4: Update Data Room viewer to filter documents by access**
+- [x] **Step 4: Update Data Room viewer to filter documents by access**
 
 In `src/app/(viewer)/room/[slug]/page.tsx`, update the page to filter documents based on viewer email. The viewer email should come from a cookie or query param set during the email verification gate:
 
@@ -924,7 +924,7 @@ const visibleDocs = await getVisibleDocuments(dataRoom.id, viewerEmail);
 // Use visibleDocs instead of dataRoom.documents in the render
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add prisma/schema.prisma src/modules/datarooms/index.ts src/app/api/datarooms/[id]/access/route.ts src/app/(viewer)/room/[slug]/page.tsx
@@ -943,13 +943,13 @@ git commit -m "feat: add granular per-document permissions for Data Rooms"
 - Create: `content/blog/investor-engagement.mdx`
 - Create: `content/blog/sales-follow-up.mdx`
 
-- [ ] **Step 1: Install MDX dependencies**
+- [x] **Step 1: Install MDX dependencies**
 
 ```bash
 npm install next-mdx-remote gray-matter
 ```
 
-- [ ] **Step 2: Create MDX utility functions**
+- [x] **Step 2: Create MDX utility functions**
 
 Create `src/lib/mdx.ts`:
 
@@ -1015,7 +1015,7 @@ export function getPostBySlug(slug: string): BlogPost | null {
 }
 ```
 
-- [ ] **Step 3: Create blog index page**
+- [x] **Step 3: Create blog index page**
 
 Create `src/app/blog/page.tsx`:
 
@@ -1077,7 +1077,7 @@ export default function BlogPage() {
 }
 ```
 
-- [ ] **Step 4: Create blog post page**
+- [x] **Step 4: Create blog post page**
 
 Create `src/app/blog/[slug]/page.tsx`:
 
@@ -1165,7 +1165,7 @@ export default async function BlogPostPage({
 }
 ```
 
-- [ ] **Step 5: Create blog content directory and posts**
+- [x] **Step 5: Create blog content directory and posts**
 
 ```bash
 mkdir -p content/blog
@@ -1316,7 +1316,7 @@ Peeeky also keeps your proposals secure:
 [Try Peeeky free](https://peeeky.com) and share your next proposal with tracking enabled.
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/lib/mdx.ts src/app/blog/ content/blog/ package.json package-lock.json
@@ -1334,7 +1334,7 @@ git commit -m "feat: add MDX blog with launch and use case posts"
 - Create: `src/app/(dashboard)/settings/referrals/page.tsx`
 - Modify: `src/app/(auth)/login/page.tsx`
 
-- [ ] **Step 1: Add Referral model to schema**
+- [x] **Step 1: Add Referral model to schema**
 
 In `prisma/schema.prisma`, add:
 
@@ -1378,7 +1378,7 @@ Then push:
 npx prisma db push
 ```
 
-- [ ] **Step 2: Create referrals module**
+- [x] **Step 2: Create referrals module**
 
 Create `src/modules/referrals/index.ts`:
 
@@ -1451,7 +1451,7 @@ export async function getReferralStats(userId: string) {
 }
 ```
 
-- [ ] **Step 3: Create referrals API route**
+- [x] **Step 3: Create referrals API route**
 
 Create `src/app/api/referrals/route.ts`:
 
@@ -1474,7 +1474,7 @@ export async function GET(req: NextRequest) {
 }
 ```
 
-- [ ] **Step 4: Create referral settings page**
+- [x] **Step 4: Create referral settings page**
 
 Create `src/app/(dashboard)/settings/referrals/page.tsx`:
 
@@ -1629,7 +1629,7 @@ export default function ReferralsPage() {
 }
 ```
 
-- [ ] **Step 5: Capture referral code on signup**
+- [x] **Step 5: Capture referral code on signup**
 
 In the login/signup page (`src/app/(auth)/login/page.tsx`), capture the `ref` query parameter and store it in a cookie:
 
@@ -1644,7 +1644,7 @@ useEffect(() => {
 }, []);
 ```
 
-- [ ] **Step 6: Link referral on org creation (in auth callbacks)**
+- [x] **Step 6: Link referral on org creation (in auth callbacks)**
 
 In the NextAuth config (`src/modules/auth/index.ts`), in the signup/createOrganization callback, check for the referral cookie and create the Referral record:
 
@@ -1661,7 +1661,7 @@ if (refCode) {
 }
 ```
 
-- [ ] **Step 7: Activate referral on first payment**
+- [x] **Step 7: Activate referral on first payment**
 
 In the Stripe webhook handler (`src/app/api/webhooks/stripe/route.ts`), in the `checkout.session.completed` handler, activate the referral:
 
@@ -1672,7 +1672,7 @@ import { activateReferral } from "@/modules/referrals";
 await activateReferral(orgId);
 ```
 
-- [ ] **Step 8: Add referrals link to settings sidebar**
+- [x] **Step 8: Add referrals link to settings sidebar**
 
 In the settings navigation, add a link to `/settings/referrals`. Find the settings layout or sidebar component and add:
 
@@ -1680,7 +1680,7 @@ In the settings navigation, add a link to `/settings/referrals`. Find the settin
 <Link href="/settings/referrals">Referrals</Link>
 ```
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add prisma/schema.prisma src/modules/referrals/ src/app/api/referrals/ src/app/(dashboard)/settings/referrals/ src/app/(auth)/login/page.tsx src/app/api/webhooks/stripe/route.ts
