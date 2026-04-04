@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 const adminLinks = [
   { href: "/admin", label: "Dashboard", icon: "📊" },
   { href: "/admin/gtm", label: "GTM Strategy", icon: "🚀" },
+  { href: "/admin/gtm/executions", label: "Executions", icon: "⚡" },
+  { href: "/admin/gtm/leads", label: "Leads Pipeline", icon: "🎯" },
   { href: "/admin/organizations", label: "Organizations", icon: "🏢" },
   { href: "/admin/users", label: "Users", icon: "👥" },
   { href: "/admin/revenue", label: "Revenue", icon: "💰" },
@@ -32,7 +34,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               key={link.href}
               href={link.href}
               className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                (link.href === "/admin" ? pathname === "/admin" : pathname.startsWith(link.href))
+                (link.href === "/admin" || link.href === "/admin/gtm"
+                  ? pathname === link.href
+                  : pathname.startsWith(link.href))
                   ? "bg-white/10 text-white"
                   : "text-white/50 hover:text-white/80 hover:bg-white/5"
               }`}
