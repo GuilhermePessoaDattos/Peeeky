@@ -113,20 +113,28 @@ export async function scrapeRecentFunding(): Promise<ScrapedLead[]> {
 
     const leads: ScrapedLead[] = [];
 
+    // Only process titles that clearly indicate a funding event
+    const FUNDING_SIGNALS = /raises?|secures?|closes?|lands?|nabs?|bags?|funding|raised|\$\d+[MBK]/i;
+
     for (const block of itemBlocks) {
       const title = extractTag(block, "title");
       if (!title) continue;
 
+      // Skip articles that aren't about funding rounds
+      if (!FUNDING_SIGNALS.test(title)) continue;
+
       const { company, fundingAmount, fundingRound } =
         parseFundingTitle(title);
 
-      if (!company) continue;
+      if (!company || company.length > 60) continue;
 
       const slug = slugify(company);
+      if (!slug || slug.length < 2) continue;
+
       const email = `founder@${slug}.com`;
 
       leads.push({
-        name: company,
+        name: "Founder",
         company,
         email,
         fundingRound,
