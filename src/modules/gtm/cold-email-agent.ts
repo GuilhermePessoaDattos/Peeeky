@@ -200,21 +200,22 @@ export async function executeColdEmail(
           lead.fundingAmount,
         );
 
+        // Always save email content in metadata for preview
+        const fullMetadata = {
+          leadId: lead.id,
+          from: SENDER_FROM,
+          to: lead.email,
+          company: lead.company,
+          subject: email.subject,
+          body: email.body,
+        };
+        await prisma.gtmExecution.update({
+          where: { id: execution.id },
+          data: { metadata: JSON.stringify(fullMetadata) },
+        });
+
         if (requiresApproval) {
-          // Save content for review but don't send
           await markAwaitingApproval(execution.id);
-          await prisma.gtmExecution.update({
-            where: { id: execution.id },
-            data: {
-              metadata: JSON.stringify({
-                leadId: lead.id,
-                leadEmail: lead.email,
-                company: lead.company,
-                subject: email.subject,
-                body: email.body,
-              }),
-            },
-          });
           logs.push(`  [awaiting_approval] ${lead.email} — "${email.subject}"`);
         } else {
           // Autonomous: send immediately
@@ -287,20 +288,22 @@ export async function executeColdEmail(
           lead.emailSubject ?? "Previous email",
         );
 
+        // Always save content in metadata for preview
+        const followUpMeta = {
+          leadId: lead.id,
+          from: SENDER_FROM,
+          to: lead.email,
+          company: lead.company,
+          subject: followUp.subject,
+          body: followUp.body,
+        };
+        await prisma.gtmExecution.update({
+          where: { id: execution.id },
+          data: { metadata: JSON.stringify(followUpMeta) },
+        });
+
         if (requiresApproval) {
           await markAwaitingApproval(execution.id);
-          await prisma.gtmExecution.update({
-            where: { id: execution.id },
-            data: {
-              metadata: JSON.stringify({
-                leadId: lead.id,
-                leadEmail: lead.email,
-                company: lead.company,
-                subject: followUp.subject,
-                body: followUp.body,
-              }),
-            },
-          });
           logs.push(`  [awaiting_approval] follow-up ${lead.email} — "${followUp.subject}"`);
         } else {
           const result = await sendEmail(lead.email, followUp.subject, followUp.body);
