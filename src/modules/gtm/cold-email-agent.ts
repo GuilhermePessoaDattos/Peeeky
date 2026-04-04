@@ -4,6 +4,7 @@ import { redis } from "@/lib/redis";
 import { Resend } from "resend";
 
 import { scrapeRecentFunding, saveLeads } from "./lead-scraper";
+import { enrichPendingLeads } from "./apollo-enricher";
 import {
   createExecution,
   markRunning,
@@ -167,6 +168,19 @@ export async function executeColdEmail(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logs.push(`Phase 1 warning: lead scraping failed — ${message}`);
+  }
+
+  // ── Phase 1.5: Enrich leads via Apollo.io ──────────────────────────
+  if (process.env.APOLLO_API_KEY) {
+    try {
+      const enriched = await enrichPendingLeads(5);
+      logs.push(`Phase 1.5: enriched ${enriched} leads via Apollo.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logs.push(`Phase 1.5 warning: Apollo enrichment failed — ${message}`);
+    }
+  } else {
+    logs.push("Phase 1.5: skipped Apollo enrichment (APOLLO_API_KEY not set).");
   }
 
   // ── Phase 2: Cold emails to new leads ──────────────────────────────
