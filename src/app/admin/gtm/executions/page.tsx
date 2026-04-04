@@ -548,12 +548,12 @@ function PreviewContent({ execution }: { execution: Execution }) {
             {(meta.text as string) ?? (meta.content as string) ?? "—"}
           </div>
         </div>
-        {meta.hashtags && (
+        {meta.hashtags ? (
           <div>
             <p className="text-xs font-medium text-white/40 mb-1">Hashtags</p>
             <p className="text-sm text-[#6C5CE7]">{String(meta.hashtags)}</p>
           </div>
-        )}
+        ) : null}
       </div>
     );
   }
