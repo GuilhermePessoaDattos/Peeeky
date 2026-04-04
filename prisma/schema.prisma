@@ -432,22 +432,23 @@ model GtmActivity {
 }
 
 model GtmAgent {
-  id            String        @id @default(cuid())
-  name          String        @unique
-  displayName   String
-  description   String
-  schedule      String
-  status        String        @default("active")
-  lastRunAt     DateTime?
-  lastRunStatus String?
-  lastRunOutput String?
-  runsTotal     Int           @default(0)
-  runsSuccess   Int           @default(0)
-  runsFailed    Int           @default(0)
-  config        String?
-  runs          GtmAgentRun[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id               String        @id @default(cuid())
+  name             String        @unique
+  displayName      String
+  description      String
+  schedule         String
+  status           String        @default("active")
+  requiresApproval Boolean       @default(false)
+  lastRunAt        DateTime?
+  lastRunStatus    String?
+  lastRunOutput    String?
+  runsTotal        Int           @default(0)
+  runsSuccess      Int           @default(0)
+  runsFailed       Int           @default(0)
+  config           String?
+  runs             GtmAgentRun[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 }
 
 model GtmAgentRun {
@@ -464,6 +465,58 @@ model GtmAgentRun {
 
   @@index([agentId])
   @@index([startedAt])
+}
+
+model GtmExecution {
+  id            String    @id @default(cuid())
+  agentName     String
+  actionType    String                          // email_send, email_followup, blog_publish, linkedin_post, reddit_comment
+  title         String
+  status        String    @default("pending")   // pending, awaiting_approval, approved, running, success, failed, skipped, rejected
+  scheduledAt   DateTime
+  executedAt    DateTime?
+  completedAt   DateTime?
+  duration      Int?
+  output        String?
+  error         String?
+  metadata      String?                         // JSON: email content, post text, lead info, etc.
+  retryCount    Int       @default(0)
+  approvedAt    DateTime?
+  approvedBy    String?
+  rejectedAt    DateTime?
+  rejectionNote String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([agentName])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([actionType])
+}
+
+model OutboundLead {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  company       String
+  role          String?
+  source        String                          // techcrunch_rss, crunchbase, manual
+  fundingRound  String?
+  fundingAmount String?
+  status        String    @default("new")       // new, emailed, followed_up, replied, converted, unsubscribed
+  emailedAt     DateTime?
+  followedUpAt  DateTime?
+  repliedAt     DateTime?
+  emailSubject  String?
+  emailBody     String?
+  followUpBody  String?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status])
+  @@index([emailedAt])
+  @@index([source])
 }
 
 // ─── NextAuth Models ────────────────────────────────────
