@@ -15,7 +15,7 @@ interface Execution {
   duration: number | null;
   output: string | null;
   error: string | null;
-  metadata: Record<string, unknown> | null;
+  metadata: string | Record<string, unknown> | null;
 }
 
 interface Stats {
@@ -514,7 +514,16 @@ export default function ExecutionsDashboard() {
 // ── Preview Content Sub-component ────────────────────────────────────────────
 
 function PreviewContent({ execution }: { execution: Execution }) {
-  const meta = execution.metadata as Record<string, unknown> | null;
+  let meta: Record<string, unknown> | null = null;
+  if (execution.metadata) {
+    try {
+      meta = typeof execution.metadata === "string"
+        ? JSON.parse(execution.metadata)
+        : execution.metadata as Record<string, unknown>;
+    } catch {
+      meta = null;
+    }
+  }
   if (!meta) {
     return <p className="text-sm text-white/30">No metadata available</p>;
   }
