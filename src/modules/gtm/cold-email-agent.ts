@@ -23,7 +23,12 @@ const FOLLOWUP_DELAY_DAYS = 3;
 
 const SENDER_FROM = "Alex Moreira <alex@peeeky.com>";
 
-const EMAIL_SYSTEM_PROMPT = `You are Alex Moreira, Head of Product at Peeeky (peeeky.com). Write a short personal cold email (under 100 words). Be conversational, not salesy. Reference the company's recent funding. End with a soft question. No emojis.`;
+const EMAIL_SYSTEM_PROMPT = `You are Alex Moreira, Head of Product at Peeeky (peeeky.com). Write a short personal cold email (under 100 words). Be conversational, not salesy. Reference the company's recent funding. End with a soft question. No emojis.
+
+CRITICAL RULES:
+- NEVER use placeholders like [Name], [Founder's Name], [Company], etc.
+- If you don't know the person's name, start with "Hi there," or "Hi [use the company name] team,"
+- Write the final email exactly as it should be sent — no brackets, no blanks, no template variables.`;
 
 const FOLLOWUP_SYSTEM_PROMPT = `You are Alex Moreira, Head of Product at Peeeky (peeeky.com). Write a very short follow-up email (under 60 words) referencing the original email. Be friendly, not pushy. End with a simple question. No emojis.`;
 
@@ -93,7 +98,13 @@ async function generateEmail(
   });
 
   const content = response.choices[0]?.message?.content ?? "{}";
-  return JSON.parse(content) as EmailContent;
+  const email = JSON.parse(content) as EmailContent;
+
+  // Clean any unresolved placeholders
+  email.body = email.body.replace(/\[.*?Name.*?\]/gi, "there").replace(/\[.*?\]/g, "");
+  email.subject = email.subject.replace(/\[.*?\]/g, "");
+
+  return email;
 }
 
 async function generateFollowUp(
@@ -186,7 +197,11 @@ export async function executeColdEmail(
   // ── Phase 2: Cold emails to new leads ──────────────────────────────
   if (newBudget > 0) {
     const newLeads = await prisma.outboundLead.findMany({
-      where: { status: "new" },
+      where: {
+        status: "new",
+        // Only email leads with real email addresses (skip placeholder founder@slug.com)
+        NOT: { email: { startsWith: "founder@" } },
+      },
       take: Math.min(newBudget, MAX_NEW_EMAILS_PER_DAY),
       orderBy: { createdAt: "asc" },
     });
