@@ -9,8 +9,10 @@ interface ScrapedLead {
   source: string;
 }
 
-const TECHCRUNCH_FEED_URL =
-  "https://techcrunch.com/category/fundraise/feed/";
+const TECHCRUNCH_FEED_URLS = [
+  "https://techcrunch.com/category/venture/feed/",
+  "https://techcrunch.com/tag/fundraising/feed/",
+];
 
 /**
  * Parse funding details from a TechCrunch RSS item title.
@@ -72,20 +74,34 @@ function extractTag(xml: string, tag: string): string {
  */
 export async function scrapeRecentFunding(): Promise<ScrapedLead[]> {
   try {
-    const response = await fetch(TECHCRUNCH_FEED_URL, {
-      headers: {
-        "User-Agent": "MicroSaaS-LeadScraper/1.0",
-        Accept: "application/rss+xml, application/xml, text/xml",
-      },
-    });
+    // Try multiple RSS feed URLs (TechCrunch changes these periodically)
+    let xml = "";
+    let fetchedFrom = "";
 
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch TechCrunch RSS: ${response.status} ${response.statusText}`
-      );
+    for (const feedUrl of TECHCRUNCH_FEED_URLS) {
+      try {
+        const response = await fetch(feedUrl, {
+          headers: {
+            "User-Agent": "MicroSaaS-LeadScraper/1.0",
+            Accept: "application/rss+xml, application/xml, text/xml",
+          },
+        });
+        if (response.ok) {
+          xml = await response.text();
+          fetchedFrom = feedUrl;
+          break;
+        }
+      } catch {
+        continue;
+      }
     }
 
-    const xml = await response.text();
+    if (!xml) {
+      console.warn("[lead-scraper] All TechCrunch RSS feeds returned errors.");
+      return [];
+    }
+
+    console.log(`[lead-scraper] Fetched from: ${fetchedFrom}`);
 
     // Split XML into individual <item> blocks
     const itemBlocks = xml.match(/<item[\s>][\s\S]*?<\/item>/gi) ?? [];
