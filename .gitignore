@@ -17,3 +17,5 @@ next-env.d.ts
 !public/**/*.png
 !extensions/**/*.png
 test-results/
+.playwright-cookies/
+logs/
