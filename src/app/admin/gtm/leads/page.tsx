@@ -95,10 +95,20 @@ const STATUS_CARD_VALUE: Record<Status, string> = {
 
 const PAGE_SIZE = 50;
 
+const EMPTY_FORM = {
+  name: "",
+  email: "",
+  company: "",
+  role: "",
+  fundingRound: "",
+  fundingAmount: "",
+  notes: "",
+};
+
 /* ───── helpers ───── */
 
 function fmtDate(d: string | null) {
-  if (!d) return "—";
+  if (!d) return "\u2014";
   return new Date(d).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -107,7 +117,7 @@ function fmtDate(d: string | null) {
 }
 
 function fmtDateShort(d: string | null) {
-  if (!d) return "—";
+  if (!d) return "\u2014";
   return new Date(d).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -123,6 +133,17 @@ export default function LeadsPage() {
   const [offset, setOffset] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
+
+  /* ── add-lead modal state ── */
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [formError, setFormError] = useState("");
+  const [formSubmitting, setFormSubmitting] = useState(false);
+
+  /* ── bulk import state ── */
+  const [bulkCsv, setBulkCsv] = useState("");
+  const [bulkResult, setBulkResult] = useState("");
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -161,6 +182,107 @@ export default function LeadsPage() {
     fetchData();
   }
 
+  /* ── add lead ── */
+
+  async function handleAddLead(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError("");
+    if (!form.name || !form.email || !form.company) {
+      setFormError("Name, email, and company are required.");
+      return;
+    }
+    setFormSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/gtm/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          company: form.company,
+          role: form.role || undefined,
+          fundingRound: form.fundingRound || undefined,
+          fundingAmount: form.fundingAmount || undefined,
+          notes: form.notes || undefined,
+          source: "manual",
+        }),
+      });
+      if (res.status === 409) {
+        setFormError("Lead with this email already exists.");
+        return;
+      }
+      if (!res.ok) {
+        setFormError("Failed to create lead.");
+        return;
+      }
+      // Success
+      setForm(EMPTY_FORM);
+      setShowAddModal(false);
+      fetchData();
+    } catch {
+      setFormError("Network error. Please try again.");
+    } finally {
+      setFormSubmitting(false);
+    }
+  }
+
+  /* ── bulk import ── */
+
+  async function handleBulkImport() {
+    if (!bulkCsv.trim()) return;
+    setBulkSubmitting(true);
+    setBulkResult("");
+
+    const lines = bulkCsv
+      .trim()
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    let created = 0;
+    let skipped = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (const line of lines) {
+      const parts = line.split(",").map((p) => p.trim());
+      const [name, email, company, role] = parts;
+      if (!name || !email || !company) {
+        failed++;
+        errors.push(`Invalid line: "${line}"`);
+        continue;
+      }
+      try {
+        const res = await fetch("/api/admin/gtm/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            email,
+            company,
+            role: role || undefined,
+            source: "bulk_import",
+          }),
+        });
+        if (res.status === 409) {
+          skipped++;
+        } else if (res.ok) {
+          created++;
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+    }
+
+    setBulkResult(
+      `Done: ${created} created, ${skipped} skipped (duplicate), ${failed} failed.${errors.length > 0 ? "\n" + errors.join("\n") : ""}`
+    );
+    setBulkSubmitting(false);
+    if (created > 0) fetchData();
+  }
+
   /* ── derived ── */
 
   const funnel = data?.funnel;
@@ -190,25 +312,207 @@ export default function LeadsPage() {
     return null;
   }
 
+  /* ── input class ── */
+  const inputCls =
+    "w-full text-sm bg-white/5 border border-white/10 text-white rounded-lg px-3 py-2 outline-none focus:border-[#6C5CE7] placeholder:text-white/25 transition";
+
   /* ── render ── */
 
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-2xl font-bold text-white">Outbound Leads</h1>
-        <button
-          onClick={() => {
-            setOffset(0);
-            fetchData();
-          }}
-          className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition"
-        >
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setFormError("");
+              setBulkCsv("");
+              setBulkResult("");
+              setShowAddModal(true);
+            }}
+            className="text-xs px-3 py-1.5 rounded-lg bg-[#6C5CE7] text-white font-medium hover:bg-[#5a4bd6] transition"
+          >
+            + Add Lead
+          </button>
+          <button
+            onClick={() => {
+              setOffset(0);
+              fetchData();
+            }}
+            className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
       <p className="text-sm text-white/40 mb-6">
         Lead pipeline and outbound funnel tracking
       </p>
+
+      {/* ── Add Lead Modal ── */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowAddModal(false)}
+          />
+          {/* Modal */}
+          <div className="relative z-10 w-full max-w-lg mx-4 bg-[#0a0a0b] border border-white/10 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-bold text-white">Add Lead</h2>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="text-white/40 hover:text-white text-lg transition"
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleAddLead} className="space-y-3">
+                <div>
+                  <label className="text-[10px] text-white/40 uppercase tracking-wider font-medium">
+                    Name *
+                  </label>
+                  <input
+                    className={inputCls}
+                    placeholder="John Doe"
+                    value={form.name}
+                    onChange={(e) =>
+                      setForm({ ...form, name: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-white/40 uppercase tracking-wider font-medium">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    className={inputCls}
+                    placeholder="john@acme.com"
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm({ ...form, email: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-white/40 uppercase tracking-wider font-medium">
+                    Company *
+                  </label>
+                  <input
+                    className={inputCls}
+                    placeholder="Acme Inc"
+                    value={form.company}
+                    onChange={(e) =>
+                      setForm({ ...form, company: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-white/40 uppercase tracking-wider font-medium">
+                    Role
+                  </label>
+                  <input
+                    className={inputCls}
+                    placeholder="CEO"
+                    value={form.role}
+                    onChange={(e) =>
+                      setForm({ ...form, role: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-white/40 uppercase tracking-wider font-medium">
+                      Funding Round
+                    </label>
+                    <input
+                      className={inputCls}
+                      placeholder="Series A"
+                      value={form.fundingRound}
+                      onChange={(e) =>
+                        setForm({ ...form, fundingRound: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-white/40 uppercase tracking-wider font-medium">
+                      Funding Amount
+                    </label>
+                    <input
+                      className={inputCls}
+                      placeholder="$5M"
+                      value={form.fundingAmount}
+                      onChange={(e) =>
+                        setForm({ ...form, fundingAmount: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-white/40 uppercase tracking-wider font-medium">
+                    Notes
+                  </label>
+                  <textarea
+                    className={inputCls + " resize-none"}
+                    rows={2}
+                    placeholder="Met at conference..."
+                    value={form.notes}
+                    onChange={(e) =>
+                      setForm({ ...form, notes: e.target.value })
+                    }
+                  />
+                </div>
+
+                {formError && (
+                  <p className="text-xs text-red-400">{formError}</p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={formSubmitting}
+                  className="w-full text-sm font-medium px-4 py-2.5 rounded-lg bg-[#6C5CE7] text-white hover:bg-[#5a4bd6] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {formSubmitting ? "Creating..." : "Create Lead"}
+                </button>
+              </form>
+
+              {/* Bulk Import */}
+              <div className="mt-6 pt-5 border-t border-white/10">
+                <h3 className="text-sm font-semibold text-white mb-1">
+                  Bulk Import
+                </h3>
+                <p className="text-[11px] text-white/30 mb-3">
+                  Paste CSV lines: name,email,company,role (one per line)
+                </p>
+                <textarea
+                  className={inputCls + " resize-none font-mono text-xs"}
+                  rows={5}
+                  placeholder={"Jane Smith,jane@startup.io,StartupCo,CTO\nBob Lee,bob@corp.com,BigCorp,VP Sales"}
+                  value={bulkCsv}
+                  onChange={(e) => setBulkCsv(e.target.value)}
+                />
+                {bulkResult && (
+                  <p className="text-xs text-white/50 mt-2 whitespace-pre-wrap">
+                    {bulkResult}
+                  </p>
+                )}
+                <button
+                  onClick={handleBulkImport}
+                  disabled={bulkSubmitting || !bulkCsv.trim()}
+                  className="mt-3 text-xs font-medium px-4 py-2 rounded-lg border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  {bulkSubmitting ? "Importing..." : "Import CSV"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Funnel cards ── */}
       <div className="flex items-stretch gap-1 mb-8 overflow-x-auto">
@@ -221,7 +525,7 @@ export default function LeadsPage() {
                 {card.label}
               </p>
               <p className={`mt-1 text-2xl font-bold ${STATUS_CARD_VALUE[card.key]}`}>
-                {funnel ? funnel[card.key] : "—"}
+                {funnel ? funnel[card.key] : "\u2014"}
               </p>
             </div>
             {idx < funnelCards.length - 1 && (
@@ -309,7 +613,7 @@ export default function LeadsPage() {
                       ? `Followed up ${fmtDateShort(lead.followedUpAt)}`
                       : lead.emailedAt
                         ? `Emailed ${fmtDateShort(lead.emailedAt)}`
-                        : "—";
+                        : "\u2014";
 
                   return (
                     <tr key={lead.id} className="group">
@@ -336,7 +640,7 @@ export default function LeadsPage() {
                               {lead.company}
                             </div>
                             <div className="px-4 py-3 text-white/50 text-xs">
-                              {lead.fundingRound || "—"}
+                              {lead.fundingRound || "\u2014"}
                               {lead.fundingAmount && (
                                 <span className="ml-1 text-white/30">
                                   ({lead.fundingAmount})
@@ -361,7 +665,7 @@ export default function LeadsPage() {
                               {lastAction}
                             </div>
                             <div className="px-4 py-3 text-white/40 text-xs truncate max-w-[160px]">
-                              {lead.notes || "—"}
+                              {lead.notes || "\u2014"}
                             </div>
                           </div>
                           {/* Actions */}
@@ -464,7 +768,7 @@ export default function LeadsPage() {
                                 <div>
                                   <span className="text-white/30">Role</span>
                                   <p className="text-white/60">
-                                    {lead.role || "—"}
+                                    {lead.role || "\u2014"}
                                   </p>
                                 </div>
                                 <div>
@@ -476,7 +780,7 @@ export default function LeadsPage() {
                                     Funding Round
                                   </span>
                                   <p className="text-white/60">
-                                    {lead.fundingRound || "—"}
+                                    {lead.fundingRound || "\u2014"}
                                   </p>
                                 </div>
                                 <div>
@@ -484,7 +788,7 @@ export default function LeadsPage() {
                                     Funding Amount
                                   </span>
                                   <p className="text-white/60">
-                                    {lead.fundingAmount || "—"}
+                                    {lead.fundingAmount || "\u2014"}
                                   </p>
                                 </div>
                                 <div>

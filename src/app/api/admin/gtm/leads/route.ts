@@ -58,3 +58,52 @@ export async function GET(req: NextRequest) {
     },
   });
 }
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { name, email, company, role, fundingRound, fundingAmount, source, notes } = body;
+
+    // Validate required fields
+    if (!name || !email || !company) {
+      return NextResponse.json(
+        { error: "name, email, and company are required" },
+        { status: 400 }
+      );
+    }
+
+    // Check if email already exists
+    const existing = await prisma.outboundLead.findFirst({
+      where: { email },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "Lead with this email already exists" },
+        { status: 409 }
+      );
+    }
+
+    const lead = await prisma.outboundLead.create({
+      data: {
+        name,
+        email,
+        company,
+        role: role || null,
+        fundingRound: fundingRound || null,
+        fundingAmount: fundingAmount || null,
+        source: source || "manual",
+        notes: notes || null,
+        status: "new",
+      },
+    });
+
+    return NextResponse.json(lead, { status: 201 });
+  } catch (error) {
+    console.error("POST /api/admin/gtm/leads error:", error);
+    return NextResponse.json(
+      { error: "Failed to create lead" },
+      { status: 500 }
+    );
+  }
+}
