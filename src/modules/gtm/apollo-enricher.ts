@@ -115,16 +115,16 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
     await prisma.outboundLead.update({
       where: { id: leadId },
       data: {
-        email: person.email,
-        name: fullName,
-        role: person.title ?? lead.role,
+        email: person.email || undefined,
+        name: fullName || undefined,
+        role: person.title || lead.role || undefined,
         notes: lead.notes
           ? `${lead.notes}\n[Apollo enriched ${new Date().toISOString()}]`
           : `[Apollo enriched ${new Date().toISOString()}]`,
       },
     });
 
-    return { success: true, email: person.email };
+    return { success: true, email: person.email ?? undefined };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[apollo-enricher] enrichLead error: ${message}`);
@@ -200,10 +200,10 @@ export async function searchPeople(query: {
     const p = result.person;
     return [
       {
-        name: [p.first_name, p.last_name].filter(Boolean).join(" "),
-        email: p.email,
-        title: p.title ?? "",
-        company: p.organization_name ?? query.company ?? "",
+        name: [p.first_name, p.last_name].filter(Boolean).join(" ") || "Unknown",
+        email: p.email || "",
+        title: p.title || "",
+        company: p.organization_name || query.company || "",
       },
     ];
   } catch (err) {
