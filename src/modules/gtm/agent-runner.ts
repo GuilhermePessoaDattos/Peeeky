@@ -1,17 +1,41 @@
 import { prisma } from "@/lib/prisma";
+import type { GtmAgent } from "@prisma/client";
+import { executeColdEmail } from "./cold-email-agent";
+import { executeBlogWriter } from "./blog-writer-agent";
+import { executeSocialMedia } from "./social-media-agent";
 
-type AgentExecutor = (config: string | null) => Promise<{
+type AgentExecutor = (agent: GtmAgent) => Promise<{
   output: string;
   itemsCreated: number;
 }>;
 
 const AGENT_EXECUTORS: Record<string, AgentExecutor> = {
-  "content-writer": executeContentWriter,
-  "social-manager": executeSocialManager,
-  "community-rep": executeCommunityRep,
-  "outbound-sales": executeOutboundSales,
+  // --- Active agents backed by real implementations ---
+  "cold-email": (agent) => executeColdEmail(agent.requiresApproval),
+  "blog-writer": (agent) => executeBlogWriter(agent.requiresApproval),
+  "social-media": (agent) => executeSocialMedia(agent.requiresApproval),
+
+  // --- Unchanged agents ---
   "github-maintainer": executeGithubMaintainer,
   "analytics-reporter": executeAnalyticsReporter,
+
+  // --- Legacy stubs (migrated) ---
+  "content-writer": async () => ({
+    output: "Migrated to blog-writer",
+    itemsCreated: 0,
+  }),
+  "social-manager": async () => ({
+    output: "Migrated to social-media",
+    itemsCreated: 0,
+  }),
+  "community-rep": async () => ({
+    output: "Migrated to social-media",
+    itemsCreated: 0,
+  }),
+  "outbound-sales": async () => ({
+    output: "Migrated to cold-email",
+    itemsCreated: 0,
+  }),
 };
 
 export async function runAgent(agentName: string, runId?: string) {
@@ -40,7 +64,7 @@ export async function runAgent(agentName: string, runId?: string) {
   }
 
   try {
-    const result = await executor(agent.config);
+    const result = await executor(agent);
     const duration = Math.round((Date.now() - startTime) / 1000);
 
     await prisma.$transaction([
@@ -92,41 +116,9 @@ export async function runAgent(agentName: string, runId?: string) {
   }
 }
 
-// --- Agent Executors ---
+// --- Unchanged Agent Executors ---
 
-async function executeContentWriter(_config: string | null) {
-  const today = new Date().toISOString().slice(0, 10);
-  return {
-    output: `Content writer triggered for ${today}. Claude Remote Trigger will generate drafts.`,
-    itemsCreated: 0,
-  };
-}
-
-async function executeSocialManager(_config: string | null) {
-  const today = new Date().toISOString().slice(0, 10);
-  return {
-    output: `Social manager triggered for ${today}. Claude Remote Trigger will generate posts.`,
-    itemsCreated: 0,
-  };
-}
-
-async function executeCommunityRep(_config: string | null) {
-  const today = new Date().toISOString().slice(0, 10);
-  return {
-    output: `Community rep triggered for ${today}. Scanning Reddit, IH, HN for relevant threads.`,
-    itemsCreated: 0,
-  };
-}
-
-async function executeOutboundSales(_config: string | null) {
-  const today = new Date().toISOString().slice(0, 10);
-  return {
-    output: `Outbound sales triggered for ${today}. Claude Remote Trigger will research leads and draft emails.`,
-    itemsCreated: 0,
-  };
-}
-
-async function executeGithubMaintainer(_config: string | null) {
+async function executeGithubMaintainer(_agent: GtmAgent) {
   const today = new Date().toISOString().slice(0, 10);
   return {
     output: `GitHub maintainer triggered for ${today}. Checking issues and PRs.`,
@@ -134,7 +126,7 @@ async function executeGithubMaintainer(_config: string | null) {
   };
 }
 
-async function executeAnalyticsReporter(_config: string | null) {
+async function executeAnalyticsReporter(_agent: GtmAgent) {
   const [users, docs, views, orgs] = await Promise.all([
     prisma.user.count(),
     prisma.document.count(),
