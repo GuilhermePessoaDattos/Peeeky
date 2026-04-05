@@ -5,7 +5,7 @@ import fs from "fs";
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-const API_BASE = process.env.PEEEKY_API_URL || "https://peeeky.com";
+const API_BASE = (process.env.PEEEKY_API_URL || "https://peeeky.com").replace("://peeeky.com", "://www.peeeky.com");
 const CRON_SECRET = process.env.CRON_SECRET || "";
 const COOKIES_DIR = path.join(__dirname, "..", ".playwright-cookies");
 
@@ -70,6 +70,7 @@ async function reportStatus(
   const duration = now.getTime() - startTime.getTime();
 
   const body: Record<string, any> = {
+    executionId,
     status,
     output,
     executedAt: startTime.toISOString(),
@@ -80,9 +81,9 @@ async function reportStatus(
 
   try {
     const res = await fetch(
-      `${API_BASE}/api/admin/gtm/executions/${executionId}`,
+      `${API_BASE}/api/cron/social-report`,
       {
-        method: "PATCH",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${CRON_SECRET}`,
@@ -249,17 +250,27 @@ async function main(): Promise<void> {
   // 1. Fetch pending actions
   let actions: PendingAction[];
   try {
-    const res = await fetch(
-      `${API_BASE}/api/admin/gtm/executions/pending`,
-      {
+    const url = `${API_BASE}/api/cron/social-pending`;
+    console.log(`Fetching: ${url}`);
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${CRON_SECRET}` },
+      redirect: "manual",
+    });
+    if (res.status >= 300 && res.status < 400) {
+      // Follow redirect manually with auth header
+      const location = res.headers.get("location") || "";
+      console.log(`Redirected to: ${location}`);
+      const res2 = await fetch(location, {
         headers: { Authorization: `Bearer ${CRON_SECRET}` },
-      }
-    );
-    if (!res.ok) {
+      });
+      actions = (await res2.json()).actions || [];
+    } else if (!res.ok) {
       console.error(`Failed to fetch pending actions: ${res.status} ${res.statusText}`);
       process.exit(1);
+    } else {
+      const json = await res.json();
+      actions = json.actions || [];
     }
-    actions = await res.json();
   } catch (err: any) {
     console.error("Network error fetching pending actions:", err.message);
     process.exit(1);
