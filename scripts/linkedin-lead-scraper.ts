@@ -52,24 +52,73 @@ async function main() {
     fs.mkdirSync(COOKIES_DIR, { recursive: true });
   }
 
-  const browser = await chromium.launch({ headless: false, slowMo: 500 });
-  const ctx = await loadContext(browser);
-  const page = await ctx.newPage();
+  // Use system Chrome with existing profile to avoid LinkedIn bot detection
+  const chromeUserDataDir = path.join(COOKIES_DIR, "chrome-profile");
+  const ctx = await chromium.launchPersistentContext(chromeUserDataDir, {
+    headless: false,
+    slowMo: 500,
+    channel: "chrome", // Use installed Chrome instead of Playwright's Chromium
+    viewport: { width: 1280, height: 900 },
+    args: ["--disable-blink-features=AutomationControlled"],
+  });
+  let page = ctx.pages()[0] || await ctx.newPage();
 
   try {
     // Check if logged in
     await page.goto("https://www.linkedin.com/feed/", { waitUntil: "domcontentloaded", timeout: 30000 });
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(5000);
 
-    const isLoggedIn = await page.$('input[aria-label="Search"]') !== null ||
-                       await page.$('input[placeholder*="Search"]') !== null;
+    // Detect login by checking for feed-specific elements
+    const feedSelectors = [
+      'input[aria-label="Search"]',
+      'input[placeholder*="Search"]',
+      'div.feed-shared-update-v2',
+      'button[data-control-name="identity_welcome_message"]',
+      'div.scaffold-layout__main',
+      'nav.global-nav',
+    ];
+
+    let isLoggedIn = false;
+    for (const sel of feedSelectors) {
+      if (await page.$(sel)) { isLoggedIn = true; break; }
+    }
 
     if (!isLoggedIn) {
       console.log("Not logged in. Please log in manually in the browser window...");
-      console.log("Waiting up to 2 minutes for login...\n");
-      await page.waitForSelector('input[aria-label="Search"]', { timeout: 120000 });
-      console.log("Login detected! Saving cookies...\n");
-      await saveContext(ctx);
+      console.log("Waiting up to 5 minutes for login...\n");
+      console.log("After logging in, the script will continue automatically.\n");
+
+      // Wait for any of the feed selectors to appear (5 min timeout)
+      // Poll every 3 seconds checking URL — resilient to navigation/context changes
+      const loginDeadline = Date.now() + 300000;
+      while (Date.now() < loginDeadline) {
+        try {
+          const url = page.url();
+          if (url.includes("/feed") || url.includes("/mynetwork") || url.includes("/in/")) {
+            break;
+          }
+        } catch {
+          // Context destroyed by navigation — that's fine, get current page
+          const pages = ctx.pages();
+          if (pages.length > 0) {
+            page = pages[pages.length - 1];
+            try {
+              const url = page.url();
+              if (url.includes("/feed") || url.includes("/mynetwork") || url.includes("/in/")) {
+                break;
+              }
+            } catch { /* keep waiting */ }
+          }
+        }
+        await new Promise(r => setTimeout(r, 3000));
+      }
+
+      // Navigate to feed after login
+      try {
+        await page.goto("https://www.linkedin.com/feed/", { waitUntil: "domcontentloaded", timeout: 15000 });
+      } catch { /* may already be on feed */ }
+      await new Promise(r => setTimeout(r, 3000));
+      console.log("Login detected! Cookies saved automatically.\n");
     }
 
     // Search for people
@@ -94,12 +143,10 @@ async function main() {
     console.log(`\nDone! Saved: ${saved}, Skipped: ${skipped}`);
     console.log(`View leads at: ${API_BASE}/admin/gtm/leads\n`);
 
-    // Save cookies for next run
-    await saveContext(ctx);
   } catch (err) {
     console.error("Error:", err instanceof Error ? err.message : err);
   } finally {
-    await browser.close();
+    await ctx.close();
   }
 }
 
@@ -116,51 +163,63 @@ async function searchPeople(page: Page, query: string, limit: number): Promise<S
 
   const contacts: ScrapedContact[] = [];
 
-  // Extract search results
-  const resultCards = await page.$$('div.entity-result__item, li.reusable-search__result-container');
-  console.log(`Found ${resultCards.length} result cards on page`);
+  // Extract search results using profile links (resilient to CSS class changes)
+  const profileData = await page.evaluate(() => {
+    const links = document.querySelectorAll('a[href*="/in/"]');
+    const seen = new Set<string>();
+    const results: Array<{ name: string; headline: string; profileUrl: string; location: string }> = [];
 
-  for (const card of resultCards) {
+    for (const link of links) {
+      const href = (link.getAttribute("href") || "").split("?")[0];
+      if (!href || seen.has(href)) continue;
+      seen.add(href);
+
+      const text = (link.textContent || "").trim();
+      if (!text || text === "LinkedIn Member" || text.length < 3) continue;
+
+      // The link text usually contains "Name  • DegreeHeadline"
+      const parts = text.split(/\s*•\s*/);
+      const name = parts[0]?.trim() || "";
+      const rest = parts.slice(1).join(" • ").trim();
+
+      if (!name || name.length > 50) continue;
+
+      // Try to find location in the parent container
+      const container = link.closest("li") || link.parentElement?.parentElement?.parentElement;
+      const allText = container?.textContent || "";
+      // Location patterns: "City, State" or "City, Country"
+      const locMatch = allText.match(/(?:São Paulo|New York|San Francisco|London|Berlin|Remote|[A-Z][a-z]+(?:,\s*[A-Z][a-z]+)?(?:\s+e\s+[A-Za-z]+)?)/);
+
+      results.push({
+        name,
+        headline: rest,
+        profileUrl: href.startsWith("http") ? href : `https://www.linkedin.com${href}`,
+        location: locMatch?.[0] || "",
+      });
+    }
+    return results;
+  });
+
+  console.log(`Found ${profileData.length} profiles on page`);
+
+  for (const data of profileData) {
     if (contacts.length >= limit) break;
 
-    try {
-      // Extract name
-      const nameEl = await card.$('span.entity-result__title-text a span[aria-hidden="true"], span.entity-result__title-text a span:first-child');
-      const name = nameEl ? (await nameEl.textContent())?.trim() || "" : "";
-      if (!name || name === "LinkedIn Member") continue;
+    const { company, role } = parseHeadline(data.headline, data.name);
+    if (!company) continue;
 
-      // Extract headline (contains role + company usually)
-      const headlineEl = await card.$('div.entity-result__primary-subtitle, div.entity-result__summary');
-      const headline = headlineEl ? (await headlineEl.textContent())?.trim() || "" : "";
+    contacts.push({
+      name: cleanName(data.name),
+      headline: data.headline,
+      company,
+      role,
+      profileUrl: data.profileUrl,
+      location: data.location,
+      website: null,
+      email: null,
+    });
 
-      // Extract profile URL
-      const linkEl = await card.$('a.app-aware-link[href*="/in/"]');
-      const profileUrl = linkEl ? (await linkEl.getAttribute("href"))?.split("?")[0] || "" : "";
-
-      // Extract location
-      const locationEl = await card.$('div.entity-result__secondary-subtitle');
-      const location = locationEl ? (await locationEl.textContent())?.trim() || "" : "";
-
-      // Parse company and role from headline
-      const { company, role } = parseHeadline(headline, name);
-
-      if (!company) continue;
-
-      contacts.push({
-        name: cleanName(name),
-        headline,
-        company,
-        role,
-        profileUrl,
-        location,
-        website: null,
-        email: null,
-      });
-
-      console.log(`  [${contacts.length}/${limit}] ${cleanName(name)} — ${role} @ ${company}`);
-    } catch {
-      continue;
-    }
+    console.log(`  [${contacts.length}/${limit}] ${cleanName(data.name)} — ${role} @ ${company}`);
   }
 
   // For each contact, try to get more details from their profile
@@ -307,34 +366,34 @@ async function saveLead(contact: ScrapedContact): Promise<{ saved: boolean; reas
   const email = contact.email || `${contact.name.toLowerCase().replace(/\s+/g, ".")}@${contact.company.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`;
 
   try {
-    const res = await fetch(`${API_BASE}/api/admin/gtm/leads`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${CRON_SECRET}`,
-      },
-      body: JSON.stringify({
-        name: contact.name,
-        email,
-        company: contact.company,
-        role: contact.role,
-        source: "linkedin",
-        notes: `LinkedIn: ${contact.profileUrl}\nHeadline: ${contact.headline}\nLocation: ${contact.location}${contact.website ? `\nWebsite: ${contact.website}` : ""}`,
-      }),
-    });
+    // Save directly via Prisma (runs locally, not via API)
+    const { PrismaClient } = require("@prisma/client");
+    const prisma = new PrismaClient();
 
-    if (res.status === 409) {
+    // Check duplicate
+    const existing = await prisma.outboundLead.findFirst({ where: { email } });
+    if (existing) {
+      await prisma.$disconnect();
       return { saved: false, reason: "already exists" };
     }
 
-    if (!res.ok) {
-      const body = await res.text();
-      return { saved: false, reason: `API error ${res.status}: ${body.substring(0, 100)}` };
-    }
-
+    await prisma.outboundLead.create({
+      data: {
+        name: contact.name,
+        email,
+        company: contact.company,
+        role: contact.role || null,
+        source: "linkedin",
+        status: "new",
+        notes: `LinkedIn: ${contact.profileUrl}\nHeadline: ${contact.headline}\nLocation: ${contact.location}${contact.website ? `\nWebsite: ${contact.website}` : ""}`,
+      },
+    });
+    await prisma.$disconnect();
     return { saved: true };
   } catch (err) {
-    return { saved: false, reason: err instanceof Error ? err.message : String(err) };
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("Unique constraint")) return { saved: false, reason: "already exists" };
+    return { saved: false, reason: msg };
   }
 }
 
