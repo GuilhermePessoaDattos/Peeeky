@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Resend } from "resend";
 import {
   markRunning,
   markSuccess,
@@ -10,6 +11,8 @@ import {
 import { executeColdEmail } from "@/modules/gtm/cold-email-agent";
 import { executeBlogWriter } from "@/modules/gtm/blog-writer-agent";
 import { executeSocialMedia } from "@/modules/gtm/social-media-agent";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -85,8 +88,49 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
 
   // Handle special actions
   if (body.action === "approve") {
-    const updated = await approveExecution(id, "admin");
-    return NextResponse.json({ execution: updated });
+    await approveExecution(id, "admin");
+    await markRunning(id);
+    const start = Date.now();
+
+    try {
+      // Parse metadata to get email content
+      const meta = execution.metadata ? JSON.parse(execution.metadata) : null;
+
+      if (execution.actionType?.includes("email") && meta?.to && meta?.subject && meta?.body) {
+        // Send the email via Resend
+        await resend.emails.send({
+          from: meta.from || "Alex Moreira <alex@peeeky.com>",
+          to: meta.to,
+          bcc: "alex@peeeky.com",
+          subject: meta.subject,
+          text: meta.body,
+        });
+
+        // Update lead status
+        if (meta.leadId) {
+          await prisma.outboundLead.update({
+            where: { id: meta.leadId },
+            data: {
+              status: execution.actionType === "email_followup" ? "followed_up" : "emailed",
+              emailedAt: new Date(),
+              emailSubject: meta.subject,
+              emailBody: meta.body,
+            },
+          }).catch(() => {}); // Ignore if lead doesn't exist
+        }
+
+        const updated = await markSuccess(id, `Approved and sent to ${meta.to}`, Date.now() - start);
+        return NextResponse.json({ execution: updated });
+      }
+
+      // Non-email executions: just mark approved
+      const updated = await markSuccess(id, "Approved", Date.now() - start);
+      return NextResponse.json({ execution: updated });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      const updated = await markFailed(id, `Approval send failed: ${errorMsg}`, Date.now() - start);
+      return NextResponse.json({ execution: updated, error: errorMsg }, { status: 500 });
+    }
   }
 
   if (body.action === "reject") {
