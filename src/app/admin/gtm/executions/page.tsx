@@ -194,6 +194,8 @@ export default function ExecutionsDashboard() {
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
+  const [copiedMsg, setCopiedMsg] = useState("");
+
   async function handleApprove(id: string) {
     setActionLoading(id);
     try {
@@ -202,6 +204,59 @@ export default function ExecutionsDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "approve" }),
       });
+      await fetchData();
+      setPreviewExec(null);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleApproveAndCopy(exec: Execution) {
+    setActionLoading(exec.id);
+    try {
+      // Parse metadata for content
+      let meta: Record<string, unknown> = {};
+      try {
+        meta = typeof exec.metadata === "string" ? JSON.parse(exec.metadata) : (exec.metadata as Record<string, unknown>) || {};
+      } catch { /* empty */ }
+
+      // Build text to copy
+      let textToCopy = "";
+      let threadUrl = "";
+
+      if (exec.actionType === "linkedin_post") {
+        const content = (meta.content as string) || "";
+        const hashtags = (meta.hashtags as string[]) || [];
+        textToCopy = hashtags.length > 0
+          ? `${content}\n\n${hashtags.map(h => h.startsWith("#") ? h : `#${h}`).join(" ")}`
+          : content;
+      } else if (exec.actionType === "reddit_comment") {
+        textToCopy = (meta.comment as string) || (meta.content as string) || "";
+        threadUrl = (meta.threadUrl as string) || "";
+      }
+
+      // Copy to clipboard
+      if (textToCopy) {
+        await navigator.clipboard.writeText(textToCopy);
+      }
+
+      // Approve
+      await fetch(`/api/admin/gtm/executions/${exec.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve" }),
+      });
+
+      // Open thread URL for Reddit
+      if (threadUrl) {
+        window.open(threadUrl, "_blank");
+      }
+
+      setCopiedMsg(exec.actionType === "linkedin_post"
+        ? "Copied! Open LinkedIn and paste."
+        : "Copied! Reddit thread opened — paste your comment.");
+      setTimeout(() => setCopiedMsg(""), 5000);
+
       await fetchData();
       setPreviewExec(null);
     } finally {
@@ -471,13 +526,23 @@ export default function ExecutionsDashboard() {
                         )}
                         {ex.status === "awaiting_approval" && (
                           <>
-                            <button
-                              onClick={() => handleApprove(ex.id)}
-                              disabled={actionLoading === ex.id}
-                              className="rounded-lg border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-xs text-green-400 hover:bg-green-500/20 transition disabled:opacity-50"
-                            >
-                              Approve
-                            </button>
+                            {(ex.actionType === "linkedin_post" || ex.actionType === "reddit_comment") ? (
+                              <button
+                                onClick={() => handleApproveAndCopy(ex)}
+                                disabled={actionLoading === ex.id}
+                                className="rounded-lg border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-xs text-green-400 hover:bg-green-500/20 transition disabled:opacity-50"
+                              >
+                                Approve & Copy
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleApprove(ex.id)}
+                                disabled={actionLoading === ex.id}
+                                className="rounded-lg border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-xs text-green-400 hover:bg-green-500/20 transition disabled:opacity-50"
+                              >
+                                Approve
+                              </button>
+                            )}
                             <button
                               onClick={() => { setPreviewExec(ex); setRejectionNote(""); }}
                               disabled={actionLoading === ex.id}
@@ -583,17 +648,34 @@ export default function ExecutionsDashboard() {
               </div>
             )}
 
+            {/* Copied toast */}
+            {copiedMsg && (
+              <div className="mt-4 rounded-xl border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-400">
+                {copiedMsg}
+              </div>
+            )}
+
             {/* Approval actions */}
             {previewExec.status === "awaiting_approval" && (
               <div className="mt-5 pt-5 border-t border-white/10 space-y-3">
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => handleApprove(previewExec.id)}
-                    disabled={actionLoading === previewExec.id}
-                    className="flex-1 rounded-xl bg-green-600 hover:bg-green-500 text-white font-medium py-2.5 text-sm transition disabled:opacity-50"
-                  >
-                    {actionLoading === previewExec.id ? "Processing..." : "Approve"}
-                  </button>
+                  {(previewExec.actionType === "linkedin_post" || previewExec.actionType === "reddit_comment") ? (
+                    <button
+                      onClick={() => handleApproveAndCopy(previewExec)}
+                      disabled={actionLoading === previewExec.id}
+                      className="flex-1 rounded-xl bg-green-600 hover:bg-green-500 text-white font-medium py-2.5 text-sm transition disabled:opacity-50"
+                    >
+                      {actionLoading === previewExec.id ? "Processing..." : "Approve & Copy to Clipboard"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleApprove(previewExec.id)}
+                      disabled={actionLoading === previewExec.id}
+                      className="flex-1 rounded-xl bg-green-600 hover:bg-green-500 text-white font-medium py-2.5 text-sm transition disabled:opacity-50"
+                    >
+                      {actionLoading === previewExec.id ? "Processing..." : "Approve"}
+                    </button>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <textarea
