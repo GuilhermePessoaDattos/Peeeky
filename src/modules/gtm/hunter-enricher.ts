@@ -88,20 +88,28 @@ export async function findEmail(
 }
 
 /**
- * Guess company domain from company name.
- * Common patterns: "Acme Inc" → "acme.com", "My Startup" → "mystartup.com"
+ * Generate candidate domains from company name.
+ * Tries multiple TLDs since startups often use .ai, .io, .co, etc.
  */
-function guessDomain(company: string): string {
-  return company
+function guessDomains(company: string): string[] {
+  const slug = company
     .toLowerCase()
     .replace(/\s*(inc\.?|llc|ltd|corp\.?|co\.?|gmbh|s\.a\.?|sa)\s*$/i, "")
-    .replace(/[^a-z0-9]/g, "")
-    + ".com";
+    .replace(/[^a-z0-9]/g, "");
+
+  return [
+    `${slug}.com`,
+    `${slug}.ai`,
+    `${slug}.io`,
+    `${slug}.co`,
+    `get${slug}.com`,
+    `${slug}app.com`,
+  ];
 }
 
 /**
  * Enrich a single lead with Hunter.io data.
- * Tries domain-search first, falls back to guessing domain.
+ * Tries multiple domain candidates until one returns emails.
  */
 export async function enrichLead(leadId: string): Promise<{
   success: boolean;
@@ -116,8 +124,24 @@ export async function enrichLead(leadId: string): Promise<{
   if (!lead) return { success: false, error: "Lead not found" };
 
   try {
-    const domain = guessDomain(lead.company);
-    const emails = await searchByDomain(domain);
+    // Try multiple domain candidates
+    const domains = guessDomains(lead.company);
+    let emails: HunterEmail[] = [];
+    let matchedDomain = "";
+
+    for (const domain of domains) {
+      emails = await searchByDomain(domain);
+      if (emails.length > 0) {
+        matchedDomain = domain;
+        break;
+      }
+      // Small delay between attempts
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    if (emails.length === 0) {
+      return { success: false, error: `No emails found for ${lead.company} (tried: ${domains.slice(0, 3).join(", ")})` };
+    }
 
     // Find the best match: prefer CEO/Founder/C-level
     const priorityRoles = /ceo|founder|co-founder|cto|coo|president|owner|head|director|vp/i;
@@ -133,15 +157,15 @@ export async function enrichLead(leadId: string): Promise<{
           name: fullName || lead.name,
           role: bestMatch.position || lead.role || undefined,
           notes: lead.notes
-            ? `${lead.notes}\n[Hunter.io enriched ${new Date().toISOString()} — ${domain}]`
-            : `[Hunter.io enriched ${new Date().toISOString()} — ${domain}]`,
+            ? `${lead.notes}\n[Hunter.io enriched ${new Date().toISOString()} — ${matchedDomain}]`
+            : `[Hunter.io enriched ${new Date().toISOString()} — ${matchedDomain}]`,
         },
       });
 
       return { success: true, email: bestMatch.value };
     }
 
-    return { success: false, error: `No emails found for ${domain}` };
+    return { success: false, error: `No match found` };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[hunter] enrichLead error: ${message}`);
