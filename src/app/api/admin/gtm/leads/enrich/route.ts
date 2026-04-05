@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { enrichLead, enrichPendingLeads } from "@/modules/gtm/apollo-enricher";
+import { enrichLead, enrichPendingLeads } from "@/modules/gtm/hunter-enricher";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,12 +15,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Batch enrichment of pending leads
-    const enrichedCount = await enrichPendingLeads(limit ?? 5);
+    const result = await enrichPendingLeads(limit ?? 5);
 
     return NextResponse.json({
       success: true,
-      enrichedCount,
-      message: `Enriched ${enrichedCount} leads via Apollo`,
+      ...result,
+      message: `Hunter.io: enriched ${result.enriched}, failed ${result.failed}`,
     });
   } catch (error) {
     console.error("POST /api/admin/gtm/leads/enrich error:", error);

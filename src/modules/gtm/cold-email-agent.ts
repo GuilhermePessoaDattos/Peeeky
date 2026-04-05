@@ -4,7 +4,7 @@ import { redis } from "@/lib/redis";
 import { Resend } from "resend";
 
 import { scrapeRecentFunding, saveLeads } from "./lead-scraper";
-import { enrichPendingLeads } from "./apollo-enricher";
+import { enrichPendingLeads } from "./hunter-enricher";
 import {
   createExecution,
   markRunning,
@@ -181,17 +181,17 @@ export async function executeColdEmail(
     logs.push(`Phase 1 warning: lead scraping failed — ${message}`);
   }
 
-  // ── Phase 1.5: Enrich leads via Apollo.io ──────────────────────────
-  if (process.env.APOLLO_API_KEY) {
+  // ── Phase 1.5: Enrich leads via Hunter.io ──────────────────────────
+  if (process.env.HUNTER_API_KEY) {
     try {
-      const enriched = await enrichPendingLeads(5);
-      logs.push(`Phase 1.5: enriched ${enriched} leads via Apollo.`);
+      const result = await enrichPendingLeads(5);
+      logs.push(`Phase 1.5: Hunter.io enriched ${result.enriched} leads (${result.failed} failed).`);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      logs.push(`Phase 1.5 warning: Apollo enrichment failed — ${message}`);
+      logs.push(`Phase 1.5 warning: Hunter enrichment failed — ${message}`);
     }
   } else {
-    logs.push("Phase 1.5: skipped Apollo enrichment (APOLLO_API_KEY not set).");
+    logs.push("Phase 1.5: skipped lead enrichment (HUNTER_API_KEY not set).");
   }
 
   // ── Phase 2: Cold emails to new leads ──────────────────────────────
