@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 
-const HUNTER_API_KEY = process.env.HUNTER_API_KEY;
 const HUNTER_BASE = "https://api.hunter.io/v2";
+
+function getHunterKey(): string | undefined {
+  return process.env.HUNTER_API_KEY;
+}
 
 interface HunterEmail {
   value: string;
@@ -37,13 +40,13 @@ interface HunterFinderResponse {
  * Uses 1 credit per call. Returns executives/founders first.
  */
 export async function searchByDomain(domain: string): Promise<HunterEmail[]> {
-  if (!HUNTER_API_KEY) {
+  if (!getHunterKey()) {
     console.warn("[hunter] HUNTER_API_KEY not set, skipping.");
     return [];
   }
 
   try {
-    const url = `${HUNTER_BASE}/domain-search?domain=${encodeURIComponent(domain)}&api_key=${HUNTER_API_KEY}&limit=5`;
+    const url = `${HUNTER_BASE}/domain-search?domain=${encodeURIComponent(domain)}&api_key=${getHunterKey()}&limit=5`;
     const res = await fetch(url);
 
     if (!res.ok) {
@@ -69,10 +72,10 @@ export async function findEmail(
   lastName: string,
   domain: string
 ): Promise<{ email: string; score: number } | null> {
-  if (!HUNTER_API_KEY) return null;
+  if (!getHunterKey()) return null;
 
   try {
-    const url = `${HUNTER_BASE}/email-finder?domain=${encodeURIComponent(domain)}&first_name=${encodeURIComponent(firstName)}&last_name=${encodeURIComponent(lastName)}&api_key=${HUNTER_API_KEY}`;
+    const url = `${HUNTER_BASE}/email-finder?domain=${encodeURIComponent(domain)}&first_name=${encodeURIComponent(firstName)}&last_name=${encodeURIComponent(lastName)}&api_key=${getHunterKey()}`;
     const res = await fetch(url);
 
     if (!res.ok) return null;
@@ -116,7 +119,7 @@ export async function enrichLead(leadId: string): Promise<{
   email?: string;
   error?: string;
 }> {
-  if (!HUNTER_API_KEY) {
+  if (!getHunterKey()) {
     return { success: false, error: "HUNTER_API_KEY not set" };
   }
 
@@ -182,7 +185,7 @@ export async function enrichPendingLeads(limit: number = 5): Promise<{
   failed: number;
   skipped: number;
 }> {
-  if (!HUNTER_API_KEY) {
+  if (!getHunterKey()) {
     console.warn("[hunter] HUNTER_API_KEY not set, skipping enrichment.");
     return { enriched: 0, failed: 0, skipped: 0 };
   }
