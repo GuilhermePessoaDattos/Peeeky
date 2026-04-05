@@ -141,6 +141,7 @@ async function sendEmail(
     await resend.emails.send({
       from: SENDER_FROM,
       to,
+      bcc: "alex@peeeky.com",
       subject,
       text: body,
     });
