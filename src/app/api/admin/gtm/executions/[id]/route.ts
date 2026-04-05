@@ -155,7 +155,13 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
           return NextResponse.json({ execution: updated, error: errText }, { status: 500 });
         }
 
-        const updated = await markSuccess(id, `Published to blog: ${path}`, Date.now() - start);
+        // Trigger Vercel redeploy so blog post appears live
+        const deployHook = process.env.VERCEL_DEPLOY_HOOK;
+        if (deployHook) {
+          await fetch(deployHook, { method: "POST" }).catch(() => {});
+        }
+
+        const updated = await markSuccess(id, `Published to blog: ${path} (redeploy triggered)`, Date.now() - start);
         return NextResponse.json({ execution: updated });
       }
 
