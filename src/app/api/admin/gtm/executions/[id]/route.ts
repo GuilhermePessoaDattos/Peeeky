@@ -123,7 +123,43 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
         return NextResponse.json({ execution: updated });
       }
 
-      // Non-email executions: just mark approved
+      // Blog post: publish to GitHub
+      if (execution.actionType === "blog_publish" && meta?.mdx && meta?.slug) {
+        const ghToken = process.env.GITHUB_TOKEN;
+        if (!ghToken) {
+          const updated = await markFailed(id, "GITHUB_TOKEN not configured", Date.now() - start);
+          return NextResponse.json({ execution: updated, error: "GITHUB_TOKEN not configured" }, { status: 500 });
+        }
+
+        const path = `content/blog/${meta.slug}.mdx`;
+        const ghRes = await fetch(
+          `https://api.github.com/repos/GuilhermePessoaDattos/Peeeky/contents/${path}`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${ghToken}`,
+              Accept: "application/vnd.github+json",
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              message: `blog: publish "${meta.title || meta.slug}"`,
+              content: Buffer.from(meta.mdx).toString("base64"),
+              branch: "main",
+            }),
+          }
+        );
+
+        if (!ghRes.ok) {
+          const errText = await ghRes.text();
+          const updated = await markFailed(id, `GitHub API ${ghRes.status}: ${errText.substring(0, 200)}`, Date.now() - start);
+          return NextResponse.json({ execution: updated, error: errText }, { status: 500 });
+        }
+
+        const updated = await markSuccess(id, `Published to blog: ${path}`, Date.now() - start);
+        return NextResponse.json({ execution: updated });
+      }
+
+      // Other executions: just mark approved
       const updated = await markSuccess(id, "Approved", Date.now() - start);
       return NextResponse.json({ execution: updated });
     } catch (err) {
