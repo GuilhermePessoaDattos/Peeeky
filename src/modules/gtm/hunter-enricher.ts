@@ -43,7 +43,7 @@ export async function searchByDomain(domain: string): Promise<HunterEmail[]> {
   }
 
   try {
-    const url = `${HUNTER_BASE}/domain-search?domain=${encodeURIComponent(domain)}&api_key=${HUNTER_API_KEY}&limit=5&seniority=executive,senior`;
+    const url = `${HUNTER_BASE}/domain-search?domain=${encodeURIComponent(domain)}&api_key=${HUNTER_API_KEY}&limit=5`;
     const res = await fetch(url);
 
     if (!res.ok) {
