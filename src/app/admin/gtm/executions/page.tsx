@@ -101,6 +101,12 @@ export default function ExecutionsDashboard() {
   const [rejectionNote, setRejectionNote] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkApproving, setBulkApproving] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
+  const [bulkMsg, setBulkMsg] = useState("");
+
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
   const fetchData = useCallback(async () => {
@@ -133,6 +139,58 @@ export default function ExecutionsDashboard() {
     const interval = setInterval(fetchData, 15_000);
     return () => clearInterval(interval);
   }, [fetchData]);
+
+  // ── Bulk Selection Helpers ─────────────────────────────────────────────────
+
+  const awaitingIds = (data?.executions || [])
+    .filter((e) => e.status === "awaiting_approval")
+    .map((e) => e.id);
+
+  const allAwaitingSelected = awaitingIds.length > 0 && awaitingIds.every((id) => selectedIds.has(id));
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (allAwaitingSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(awaitingIds));
+    }
+  }
+
+  async function handleBulkApprove() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkApproving(true);
+    setBulkProgress({ current: 0, total: ids.length });
+
+    for (let i = 0; i < ids.length; i++) {
+      setBulkProgress({ current: i + 1, total: ids.length });
+      try {
+        await fetch(`/api/admin/gtm/executions/${ids[i]}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "approve" }),
+        });
+      } catch { /* continue on error */ }
+    }
+
+    setSelectedIds(new Set());
+    setBulkApproving(false);
+    setBulkMsg(`${ids.length} items approved and sent`);
+    setTimeout(() => setBulkMsg(""), 4000);
+    await fetchData();
+  }
+
+  // Clear selection on filter/page change
+  useEffect(() => { setSelectedIds(new Set()); }, [agentFilter, statusFilter, offset]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
@@ -273,6 +331,35 @@ export default function ExecutionsDashboard() {
         </button>
       </div>
 
+      {/* ── Bulk Action Bar ───────────────────────────────────────────────── */}
+      {selectedIds.size > 0 && (
+        <div className="rounded-xl border border-[#6C5CE7]/30 bg-[#6C5CE7]/10 p-3 mb-4 flex items-center gap-4">
+          <span className="text-sm text-white font-medium">{selectedIds.size} selected</span>
+          <button
+            onClick={handleBulkApprove}
+            disabled={bulkApproving}
+            className="rounded-lg bg-[#6C5CE7] text-white text-sm px-4 py-1.5 font-medium hover:bg-[#5A4BD1] disabled:opacity-50 transition flex items-center gap-2"
+          >
+            {bulkApproving ? (
+              <>{`Approving ${bulkProgress.current}/${bulkProgress.total}...`}</>
+            ) : (
+              "Approve All"
+            )}
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-sm text-white/50 hover:text-white transition"
+          >
+            Deselect
+          </button>
+        </div>
+      )}
+      {bulkMsg && selectedIds.size === 0 && (
+        <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-3 mb-4 text-sm text-green-400">
+          {bulkMsg}
+        </div>
+      )}
+
       {/* ── Executions Table ──────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
         {loading && !data ? (
@@ -284,6 +371,16 @@ export default function ExecutionsDashboard() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10 text-left text-xs text-white/40 uppercase tracking-wider">
+                  <th className="px-4 py-3 w-10">
+                    {awaitingIds.length > 0 && (
+                      <input
+                        type="checkbox"
+                        checked={allAwaitingSelected}
+                        onChange={toggleSelectAll}
+                        className="h-4 w-4 rounded border-white/20 bg-white/5 accent-[#6C5CE7] cursor-pointer"
+                      />
+                    )}
+                  </th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Agent</th>
                   <th className="px-4 py-3">Action</th>
@@ -297,6 +394,17 @@ export default function ExecutionsDashboard() {
               <tbody>
                 {executions.map((ex) => (
                   <tr key={ex.id} className="border-b border-white/5 hover:bg-white/[0.03] transition">
+                    {/* Checkbox */}
+                    <td className="px-4 py-3 w-10">
+                      {ex.status === "awaiting_approval" && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(ex.id)}
+                          onChange={() => toggleSelect(ex.id)}
+                          className="h-4 w-4 rounded border-white/20 bg-white/5 accent-[#6C5CE7] cursor-pointer"
+                        />
+                      )}
+                    </td>
                     {/* Status */}
                     <td className="px-4 py-3">
                       <span
