@@ -21,6 +21,12 @@ const SEARCH_TERMS = [
   "document sharing",
   "investor follow up",
   "proposal tracking",
+  "fundraising tips",
+  "cold email",
+  "data room",
+  "sales proposal",
+  "docsend",
+  "investor update",
 ] as const;
 
 const LINKEDIN_SYSTEM_PROMPT = `You are Alex Moreira, Head of Product at Peeeky. Write a LinkedIn post. Hook line, blank line, 3-5 short paragraphs, CTA with peeeky.com. Under 250 words. No emojis.`;
@@ -198,46 +204,57 @@ export async function executeSocialMedia(
   itemsCreated++;
   summaryParts.push(`LinkedIn post: "${linkedIn.topic}"`);
 
-  // 4. Generate Reddit comments
-  const subreddit = rotateItem(SUBREDDITS);
-  const searchTerm = rotateItem(SEARCH_TERMS);
-
-  const threads = await searchReddit(subreddit, searchTerm);
-  const relevantThreads = threads.slice(0, 2);
-
+  // 4. Generate Reddit comments — try multiple subreddit+term combos until we find threads
   const redditResults: RedditCommentOutput[] = [];
+  const targetComments = 2;
+  const triedCombos: string[] = [];
 
-  for (const thread of relevantThreads) {
-    const comment = await generateRedditComment(thread);
-    if (!comment) continue;
+  // Shuffle subreddits and terms for variety, starting from rotation index
+  const dayIdx = dayOfYear();
+  for (let i = 0; i < SUBREDDITS.length && redditResults.length < targetComments; i++) {
+    for (let j = 0; j < SEARCH_TERMS.length && redditResults.length < targetComments; j++) {
+      const sub = SUBREDDITS[(dayIdx + i) % SUBREDDITS.length];
+      const term = SEARCH_TERMS[(dayIdx + j) % SEARCH_TERMS.length];
+      const combo = `r/${sub}:${term}`;
+      if (triedCombos.includes(combo)) continue;
+      triedCombos.push(combo);
 
-    const commentData: RedditCommentOutput = {
-      subreddit: thread.subreddit,
-      threadTitle: thread.title,
-      threadUrl: thread.url,
-      comment,
-    };
+      const threads = await searchReddit(sub, term);
+      for (const thread of threads.slice(0, 2)) {
+        if (redditResults.length >= targetComments) break;
 
-    await createExecution({
-      agentName: "social-media",
-      actionType: "reddit_comment",
-      title: `Reddit r/${thread.subreddit}: ${thread.title.slice(0, 60)}`,
-      scheduledAt: now,
-      metadata: {
-        platform: "reddit",
-        subreddit: commentData.subreddit,
-        threadTitle: commentData.threadTitle,
-        threadUrl: commentData.threadUrl,
-        comment: commentData.comment,
-        status,
-      },
-    });
-    itemsCreated++;
-    redditResults.push(commentData);
+        const comment = await generateRedditComment(thread);
+        if (!comment) continue;
+
+        const commentData: RedditCommentOutput = {
+          subreddit: thread.subreddit,
+          threadTitle: thread.title,
+          threadUrl: thread.url,
+          comment,
+        };
+
+        await createExecution({
+          agentName: "social-media",
+          actionType: "reddit_comment",
+          title: `Reddit r/${thread.subreddit}: ${thread.title.slice(0, 60)}`,
+          scheduledAt: now,
+          metadata: {
+            platform: "reddit",
+            subreddit: commentData.subreddit,
+            threadTitle: commentData.threadTitle,
+            threadUrl: commentData.threadUrl,
+            comment: commentData.comment,
+            status,
+          },
+        });
+        itemsCreated++;
+        redditResults.push(commentData);
+      }
+    }
   }
 
   summaryParts.push(
-    `Reddit: ${redditResults.length} comments in r/${subreddit} (search: "${searchTerm}")`,
+    `Reddit: ${redditResults.length} comments (tried: ${triedCombos.join(", ")})`,
   );
 
   // 5. Set Redis key with 24h expiry
