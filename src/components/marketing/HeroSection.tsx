@@ -209,15 +209,15 @@ export function HeroSection() {
               variants={itemVariants}
               className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] text-[#0a0a0b] mb-6"
             >
-              Share documents.{" "}
-              <span className="text-[#6C5CE7]">Let AI decode the interest.</span>
+              DocSend, but{" "}
+              <span className="text-[#6C5CE7]">smarter.</span>
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
               className="text-lg md:text-xl text-[#6b7280] leading-relaxed mb-8 max-w-lg"
             >
-              Track every page, see engagement in real time, and let recipients chat with your content using AI. Built for teams that share to win.
+              Track every page of your shared documents. See who reads what, for how long, and let AI answer their questions — so you know exactly when to follow up.
             </motion.p>
 
             <motion.div
