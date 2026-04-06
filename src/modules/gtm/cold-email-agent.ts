@@ -23,12 +23,24 @@ const FOLLOWUP_DELAY_DAYS = 3;
 
 const SENDER_FROM = "Alex Moreira <alex@peeeky.com>";
 
-const EMAIL_SYSTEM_PROMPT = `You are Alex Moreira, Head of Product at Peeeky (peeeky.com). Write a short personal cold email (under 100 words). Be conversational, not salesy. Reference the company's recent funding. End with a soft question. No emojis.
+const EMAIL_SYSTEM_PROMPT_STARTUP = `You are Alex Moreira, Head of Product at Peeeky (peeeky.com). Write a short personal cold email (under 100 words) to a startup founder. Be conversational, not salesy. Reference their recent funding if known. Position Peeeky as document tracking with AI chat for pitch decks and investor materials. End with a soft question. No emojis.
 
 CRITICAL RULES:
 - NEVER use placeholders like [Name], [Founder's Name], [Company], etc.
-- If you don't know the person's name, start with "Hi there," or "Hi [use the company name] team,"
+- If you don't know the person's name, start with "Hi there," or address the company team.
 - Write the final email exactly as it should be sent — no brackets, no blanks, no template variables.`;
+
+const EMAIL_SYSTEM_PROMPT_MA = `You are Alex Moreira, Head of Product at Peeeky (peeeky.com). Write a short personal cold email (under 100 words) to an M&A advisor or investment banker. Be professional and direct. Position Peeeky as a modern virtual data room alternative with per-page analytics, NDA gating, and AI chat — helping them know which buyers are seriously engaged. End with a soft question. No emojis.
+
+CRITICAL RULES:
+- NEVER use placeholders like [Name], [Founder's Name], [Company], etc.
+- If you don't know the person's name, start with "Hi there," or address the company team.
+- Write the final email exactly as it should be sent — no brackets, no blanks, no template variables.
+- Reference their deal work, not fundraising.`;
+
+function getEmailPrompt(source: string): string {
+  return source === "hunter_ma" ? EMAIL_SYSTEM_PROMPT_MA : EMAIL_SYSTEM_PROMPT_STARTUP;
+}
 
 const FOLLOWUP_SYSTEM_PROMPT = `You are Alex Moreira, Head of Product at Peeeky (peeeky.com). Write a very short follow-up email (under 60 words) referencing the original email. Be friendly, not pushy. End with a simple question. No emojis.`;
 
@@ -77,21 +89,23 @@ async function generateEmail(
   company: string,
   fundingRound?: string | null,
   fundingAmount?: string | null,
+  source?: string,
 ): Promise<EmailContent> {
-  const userPrompt = [
-    `Write a cold email to ${leadName} at ${company}.`,
-    fundingRound ? `They recently closed a ${fundingRound} round.` : null,
-    fundingAmount ? `Amount: ${fundingAmount}.` : null,
-    `Return JSON with keys "subject" and "body".`,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const isMA = source === "hunter_ma";
+  const userPrompt = isMA
+    ? `Write a cold email to ${leadName} at ${company}. They are an M&A advisory boutique. Focus on how Peeeky data rooms help track buyer engagement during deal processes. Return JSON with keys "subject" and "body".`
+    : [
+        `Write a cold email to ${leadName} at ${company}.`,
+        fundingRound ? `They recently closed a ${fundingRound} round.` : null,
+        fundingAmount ? `Amount: ${fundingAmount}.` : null,
+        `Return JSON with keys "subject" and "body".`,
+      ].filter(Boolean).join(" ");
 
   const response = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     response_format: { type: "json_object" },
     messages: [
-      { role: "system", content: EMAIL_SYSTEM_PROMPT },
+      { role: "system", content: getEmailPrompt(source || "") },
       { role: "user", content: userPrompt },
     ],
     temperature: 0.8,
@@ -228,6 +242,7 @@ export async function executeColdEmail(
           lead.company,
           lead.fundingRound,
           lead.fundingAmount,
+          lead.source,
         );
 
         // Always save email content in metadata for preview

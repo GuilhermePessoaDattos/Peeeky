@@ -7,14 +7,21 @@ import { createExecution } from "./execution-tracker";
 /* ------------------------------------------------------------------ */
 
 const LINKEDIN_THEMES = [
-  "document tracking insight",
-  "sales follow-up tips",
-  "AI in docs",
-  "building-in-public",
-  "data rooms",
+  "document tracking insight for founders and deal teams",
+  "sales follow-up tips using document analytics",
+  "AI chat in shared documents — how it speeds up due diligence",
+  "building Peeeky: what we learned from M&A advisors",
+  "virtual data rooms: why startups and M&A boutiques need better tools",
+  "how M&A boutiques track which buyers are serious about a deal",
+  "the problem with email attachments in deal flow management",
+  "per-page analytics: knowing which slides investors actually care about",
 ] as const;
 
-const SUBREDDITS = ["startups", "SaaS", "Entrepreneur", "sales"] as const;
+const SUBREDDITS = [
+  "startups", "SaaS", "Entrepreneur", "sales",
+  "mergersandacquisitions", "FinancialCareers", "investmentbanking",
+  "venturecapital", "smallbusiness",
+] as const;
 
 const SEARCH_TERMS = [
   "pitch deck",
@@ -24,9 +31,16 @@ const SEARCH_TERMS = [
   "fundraising tips",
   "cold email",
   "data room",
+  "virtual data room",
   "sales proposal",
   "docsend",
   "investor update",
+  "due diligence",
+  "deal flow",
+  "M&A process",
+  "CIM confidential information memorandum",
+  "NDA management",
+  "buyer engagement",
 ] as const;
 
 const LINKEDIN_SYSTEM_PROMPT = `You are Alex Moreira, Head of Product at Peeeky. Write a LinkedIn post. Hook line, blank line, 3-5 short paragraphs, CTA with peeeky.com. Under 250 words. No emojis.`;
