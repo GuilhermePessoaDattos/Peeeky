@@ -524,7 +524,7 @@ export default function ExecutionsDashboard() {
                             Re-run
                           </button>
                         )}
-                        {ex.status === "awaiting_approval" && (
+                        {(ex.status === "awaiting_approval" || ex.status === "pending") && (
                           <>
                             {(ex.actionType === "linkedin_post" || ex.actionType === "reddit_comment") ? (
                               <button
@@ -656,7 +656,7 @@ export default function ExecutionsDashboard() {
             )}
 
             {/* Approval actions */}
-            {previewExec.status === "awaiting_approval" && (
+            {(previewExec.status === "awaiting_approval" || previewExec.status === "pending") && (
               <div className="mt-5 pt-5 border-t border-white/10 space-y-3">
                 <div className="flex gap-2">
                   {(previewExec.actionType === "linkedin_post" || previewExec.actionType === "reddit_comment") ? (
