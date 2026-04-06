@@ -247,13 +247,15 @@ export default function ExecutionsDashboard() {
         body: JSON.stringify({ action: "approve" }),
       });
 
-      // Open thread URL for Reddit
-      if (threadUrl) {
+      // Open target platform
+      if (exec.actionType === "linkedin_post") {
+        window.open("https://www.linkedin.com/feed/", "_blank");
+      } else if (threadUrl) {
         window.open(threadUrl, "_blank");
       }
 
       setCopiedMsg(exec.actionType === "linkedin_post"
-        ? "Copied! Open LinkedIn and paste."
+        ? "Copied! LinkedIn opened — click 'Start a post' and Ctrl+V."
         : "Copied! Reddit thread opened — paste your comment.");
       setTimeout(() => setCopiedMsg(""), 5000);
 
